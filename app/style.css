@@ -1,9 +1,3 @@
-#gameArea {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-}
-
 #gameCanvas {
     width: 100%;
     height: 100%;

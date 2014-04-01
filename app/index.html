@@ -4,17 +4,24 @@
   <meta charset="UTF-8">
   <title>Cards Against Humanity</title>
 
+  <meta name="viewport" content="width=device-width;
+    initial-scale=1; maximum-scale=1; user-scalable=0;"/>
+
   <link rel="canonical" href="http://kikcah.herokuapp.com">
   <link rel="kik-icon" href="icon.png">
 
-  <script src="http://cdn.kik.com/kik/1.0.3/kik.js"></script>
-  <script src="bower_components/kineticjs/kinetic.min.js"></script>
+  <link rel="stylesheet" href="style.css">
 
-  <script src="scripts/main.js"></script>
+  <script src="http://cdn.kik.com/kik/1.0.3/kik.js"></script>
+  <script src="bower_components/kineticjs/kinetic.js"></script>
+
 </head>
 <body>
-<canvas id="gameCanvas">
+<script src="scripts/util.js" defer="defer"></script>
+<script src="scripts/cardManager.js" defer="defer"></script>
+<script src="scripts/main.js" defer="defer"></script>
 
-</canvas>
+<div id="container" style="width: 100%; height: 100%">
+</div>
 </body>
 </html>
