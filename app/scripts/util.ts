@@ -13,4 +13,15 @@ module Util {
         };
         request.send(null);
     }
+
+    export function shuffle<T>(src: Array<T>): Array<T> {
+        var dest: Array<T> = [];
+        var length = src.length;
+        for (var i = 0; i < length; i++) {
+            var randomIndex = Math.round(Math.random() * src.length);
+            dest.push(src[randomIndex]);
+        }
+        return dest;
+    }
+
 }

@@ -6,13 +6,37 @@
 /// <reference path="cardManager.ts" />
 
 import Card = CardManager.Card;
-function generateSomeCards(layer, numCards: number = 8) {
+function generateOwnHand(layer, numCards: number = 8) {
     for (var i = 0; i < numCards; i++) {
         var card: Card = CardManager.dealWhiteCard();
         var cardView = card.view;
-        cardView.setX(stage.width() * (i / numCards));
-        cardView.setY(300);
+        var coefficient: number = ((i + 0.5) / numCards);
+        var offsetFromBottom: number = -650.0;
+        var cardFanRadius: number = 700.0;
+        var angleOffsetCoefficient = 0.44;
+        var angleStart = Math.PI * (1 - angleOffsetCoefficient);
+        var angleEnd = Math.PI * angleOffsetCoefficient;
+        var angleRadians: number = angleStart + (coefficient * (angleEnd - angleStart));
+        var angleDegrees: number = (angleRadians * (180 / Math.PI));
+        cardView.setX(stage.width() / 2 + cardFanRadius * Math.cos(angleRadians));
+        cardView.setY(stage.height() - cardFanRadius * Math.sin(angleRadians) - offsetFromBottom);
+        cardView.rotate(90 - angleDegrees);
         layer.add(cardView);
+        var indicatorCircle = new Kinetic.Circle({
+            x: stage.width() / 2,
+            y: stage.height() - offsetFromBottom,
+            radius: cardFanRadius,
+            stroke: 'black',
+            fillAlpha: 0.0
+        });
+        var center = new Kinetic.Circle({
+            x: stage.width() / 2,
+            y: stage.height() - offsetFromBottom,
+            radius: 5,
+            fill: 'black'
+        });
+        layer.add(indicatorCircle);
+        layer.add(center);
 
         var magnificationFactor = 1.3;
         var magnifyTween = new Kinetic.Tween({
@@ -27,10 +51,17 @@ function generateSomeCards(layer, numCards: number = 8) {
         cardView.on('mouseover touchstart', function () {
             this.moveToTop();
             this.magnifyTween.play();
+            this.border.stroke('#D5D5F5');
         });
 
-        cardView.on('mouseout touchmove', function () {
+        cardView.on('mouseout touchend', function () {
+            this.moveToBottom();
             this.magnifyTween.reverse();
+            this.border.stroke('#E5E5E5');
+        });
+
+        cardView.on('touchmove mousemove', function (event) {
+
         });
 
         cardView.on('click touchend', function () {
@@ -50,7 +81,8 @@ var bgLayer = new Kinetic.Layer();
 
 CardManager.populateCardData(() => {
     CardManager.shuffleCards();
-    generateSomeCards(cardLayer, 8);
+    generateOwnHand(cardLayer);
+    cardLayer.draw();
 });
 
 bgLayer.add(new Kinetic.Rect({

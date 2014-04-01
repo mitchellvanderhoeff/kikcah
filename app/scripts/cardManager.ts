@@ -21,7 +21,7 @@ module CardManager {
         }
     };
 
-    export function populateCardData(callback: Function = (() => {
+    export function populateCardData(callback: Function = (function () {
     })) {
         Util.getJSON("/resources/cards.json", (json: string) => {
             var parsed = JSON.parse(json);
@@ -29,32 +29,21 @@ module CardManager {
                 if (cardData['expansion'] == "Base") {
                     if (cardData['cardType'] == "A") {
                         var card = new Card(cardData['text'], 'white');
-                        console.log("adding white card " + card);
                         allWhiteCards.push(card);
                     } else if (cardData["cardType"] == "Q") {
                         var card = new Card(cardData['text'], 'black');
-                        console.log("adding white card " + card);
                         allBlackCards.push(card);
                     }
                 }
             });
+            console.log("Parsed " + allWhiteCards.length + " white cards and " + allBlackCards.length + " black cards");
             callback();
         });
     }
 
-    function shuffle<T>(src: Array<T>): Array<T> {
-        var dest: Array<T> = [];
-        var length = src.length;
-        for (var i = 0; i < length; i++) {
-            var randomIndex = Math.round(Math.random() * src.length);
-            dest.push(src[randomIndex]);
-        }
-        return dest;
-    }
-
     export function shuffleCards() {
-        whiteCards = shuffle(allWhiteCards);
-        blackCards = shuffle(allBlackCards);
+        whiteCards = Util.shuffle(allWhiteCards);
+        blackCards = Util.shuffle(allBlackCards);
     }
 
     export function dealWhiteCard(): Card {
@@ -73,20 +62,29 @@ module CardManager {
         public view: Kinetic.Group;
 
         constructor(public text: string, public type: string) {
+            if (/\&\w+\;/.test(text)) { // Check if we have an escape sequence
+                this.text = decodeURIComponent(text);
+            }
             this.generateView();
         }
 
         private generateView(width: number = 100, height: number = 150) {
             var typeData = cardTypeInfo[this.type];
-            var view = new Kinetic.Group();
+            var view = new Kinetic.Group({
+                offset: {
+                    x: (width / 2),
+                    y: height
+                }
+            });
             var text = new Kinetic.Text({
                 x: 10,
                 y: 15,
                 width: width - 20,
                 height: height - 50,
                 text: this.text,
-                fontSize: 16,
+                fontSize: 14,
                 fontFamily: 'Helvetica',
+                wrap: 'word',
                 fill: typeData['textColor']
             });
             var border = new Kinetic.Rect({
@@ -94,7 +92,7 @@ module CardManager {
                 y: 0,
                 width: width,
                 height: height,
-                stroke: '#E5E5E5',
+                stroke: 'lightgray',
                 fillAlpha: 0.0
             });
             var imageData = new Image();
@@ -113,6 +111,7 @@ module CardManager {
             };
             imageData.src = typeData['imageURL'];
             view['model'] = this;
+            view['border'] = border;
             this.view = view;
         }
     }
