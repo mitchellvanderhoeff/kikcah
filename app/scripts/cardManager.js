@@ -2,9 +2,15 @@
  * Created by mitch on 2014-04-01.
  */
 /// <reference path="kinetic.d.ts" />
+/// <reference path="util.ts" />
 var CardManager;
 (function (CardManager) {
-   CardManager.CardType = {
+   var allWhiteCards = [];
+   var allBlackCards = [];
+   var whiteCards = [];
+   var blackCards = [];
+
+   var cardTypeInfo = {
       white: {
          textColor: 'black',
          imageURL: '/resources/whiteCard.png'
@@ -15,48 +21,119 @@ var CardManager;
       }
    };
 
-   function createCard(cardText, cardType) {
-      var width = 100;
-      var height = 150;
-      var card = new Kinetic.Group({
-         draggable: true
-      });
-      var text = new Kinetic.Text({
-         x: 10,
-         y: 15,
-         width: width - 20,
-         height: height - 50,
-         text: cardText,
-         fontSize: 16,
-         fontFamily: 'Helvetica',
-         fill: cardType['textColor']
-      });
-      var border = new Kinetic.Rect({
-         x: 0,
-         y: 0,
-         width: width,
-         height: height,
-         stroke: '#E5E5E5',
-         fillAlpha: 0.0
-      });
-      var imageData = new Image();
-      imageData.onload = function () {
-         var image = new Kinetic.Image({
-            x: 0,
-            y: 0,
-            image: imageData,
-            width: width,
-            height: height
+   function populateCardData(callback) {
+      if (typeof callback === "undefined") {
+         callback = (function () {
          });
-         card.add(image);
-         card.add(text);
-         card.add(border);
-         card.draw();
-      };
-      imageData.src = cardType['imageURL'];
+      }
+      Util.getJSON("/resources/cards.json", function (json) {
+         var parsed = JSON.parse(json);
+         parsed.forEach(function (cardData) {
+            if (cardData['expansion'] == "Base") {
+               if (cardData['cardType'] == "A") {
+                  var card = new Card(cardData['text'], 'white');
+                  console.log("adding white card " + card);
+                  allWhiteCards.push(card);
+               } else if (cardData["cardType"] == "Q") {
+                  var card = new Card(cardData['text'], 'black');
+                  console.log("adding white card " + card);
+                  allBlackCards.push(card);
+               }
+            }
+         });
+         callback();
+      });
+   }
+
+   CardManager.populateCardData = populateCardData;
+
+   function shuffle(src) {
+      var dest = [];
+      var length = src.length;
+      for (var i = 0; i < length; i++) {
+         var randomIndex = Math.round(Math.random() * src.length);
+         dest.push(src[randomIndex]);
+      }
+      return dest;
+   }
+
+   function shuffleCards() {
+      whiteCards = shuffle(allWhiteCards);
+      blackCards = shuffle(allBlackCards);
+   }
+
+   CardManager.shuffleCards = shuffleCards;
+
+   function dealWhiteCard() {
+      var card = whiteCards[0];
+      whiteCards.splice(0, 1);
       return card;
    }
 
-   CardManager.createCard = createCard;
+   CardManager.dealWhiteCard = dealWhiteCard;
+
+   function dealBlackCard() {
+      var card = blackCards[0];
+      blackCards.splice(0, 1);
+      return card;
+   }
+
+   CardManager.dealBlackCard = dealBlackCard;
+
+   var Card = (function () {
+      function Card(text, type) {
+         this.text = text;
+         this.type = type;
+         this.generateView();
+      }
+
+      Card.prototype.generateView = function (width, height) {
+         if (typeof width === "undefined") {
+            width = 100;
+         }
+         if (typeof height === "undefined") {
+            height = 150;
+         }
+         var typeData = cardTypeInfo[this.type];
+         var view = new Kinetic.Group();
+         var text = new Kinetic.Text({
+            x: 10,
+            y: 15,
+            width: width - 20,
+            height: height - 50,
+            text: this.text,
+            fontSize: 16,
+            fontFamily: 'Helvetica',
+            fill: typeData['textColor']
+         });
+         var border = new Kinetic.Rect({
+            x: 0,
+            y: 0,
+            width: width,
+            height: height,
+            stroke: '#E5E5E5',
+            fillAlpha: 0.0
+         });
+         var imageData = new Image();
+         imageData.onload = function () {
+            var image = new Kinetic.Image({
+               x: 0,
+               y: 0,
+               image: imageData,
+               width: width,
+               height: height
+            });
+            view.add(image);
+            view.add(text);
+            view.add(border);
+            view.draw();
+         };
+         imageData.src = typeData['imageURL'];
+         view['model'] = this;
+         this.view = view;
+      };
+      return Card;
+   })();
+   CardManager.Card = Card;
 })(CardManager || (CardManager = {}));
 //# sourceMappingURL=cardManager.js.map

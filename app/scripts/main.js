@@ -4,39 +4,40 @@
 /// <reference path="kinetic.d.ts" />
 /// <reference path="util.ts" />
 /// <reference path="cardManager.ts" />
-var cardsTopYBound = 300;
+var Card = CardManager.Card;
+function generateSomeCards(layer, numCards) {
+   if (typeof numCards === "undefined") {
+      numCards = 8;
+   }
+   for (var i = 0; i < numCards; i++) {
+      var card = CardManager.dealWhiteCard();
+      var cardView = card.view;
+      cardView.setX(stage.width() * (i / numCards));
+      cardView.setY(300);
+      layer.add(cardView);
 
-function generateSomeCards(cardsData) {
-   for (var i = 0; i < 8; i++) {
-      var cardText = cardsData[i]['text'];
-      var card = CardManager.createCard(cardText, CardManager.CardType.white);
-      card.setX(stage.width() * (i / 8));
-      card.setY(cardsTopYBound);
-      card.dragBoundFunc(function (position) {
-         var x = position.x, y = position.y;
-         if (position.x < 0) {
-            x = 0;
-         }
-         if (position.y < cardsTopYBound) {
-            y = cardsTopYBound;
-         }
-         var cardsBottomYBound = stage.height() - card.height();
-         if (position.y > cardsBottomYBound) {
-            y = cardsBottomYBound;
-         }
-         var cardsRightXBound = stage.width() - card.width();
-         if (position.x > cardsRightXBound) {
-            x = cardsRightXBound;
-         }
-         return {
-            x: x,
-            y: y
-         };
+      var magnificationFactor = 1.3;
+      var magnifyTween = new Kinetic.Tween({
+         node: cardView,
+         scaleX: magnificationFactor,
+         scaleY: magnificationFactor,
+         easing: Kinetic.Easings.EaseInOut,
+         duration: 0.1
       });
-      card.on('click', function (event) {
-         card.moveToTop();
+      cardView['magnifyTween'] = magnifyTween;
+
+      cardView.on('mouseover touchstart', function () {
+         this.moveToTop();
+         this.magnifyTween.play();
       });
-      cardLayer.add(card);
+
+      cardView.on('mouseout touchmove', function () {
+         this.magnifyTween.reverse();
+      });
+
+      cardView.on('click touchend', function () {
+         this['model'].onSelect();
+      });
    }
 }
 
@@ -46,20 +47,13 @@ var stage = new Kinetic.Stage({
    height: window.innerHeight
 });
 
-var cardCollection = [];
-Util.getJSON("/resources/cards.json", function (json) {
-   var parsed = JSON.parse(json);
-   for (var card in parsed) {
-      if (card['expansion'] == "Base") {
-         cardCollection.push(card);
-      }
-   }
-   generateSomeCards(cardCollection);
-});
-
 var cardLayer = new Kinetic.Layer();
-
 var bgLayer = new Kinetic.Layer();
+
+CardManager.populateCardData(function () {
+   CardManager.shuffleCards();
+   generateSomeCards(cardLayer, 8);
+});
 
 bgLayer.add(new Kinetic.Rect({
    width: stage.width(),
