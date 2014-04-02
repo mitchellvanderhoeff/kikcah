@@ -6,6 +6,7 @@
 /// <reference path="cardManager.ts" />
 
 import Card = CardManager.Card;
+var stage: Kinetic.Stage;
 
 function calculateFanPosition(coefficient: number): { x: number; y: number; rotation: number } {
     var offsetFromBottom: number = -650.0;
@@ -52,37 +53,3 @@ function dealOwnHand(layer: Kinetic.Layer, numCards: number = 8): Array<Card> {
     }
     return cards;
 }
-
-function dealBlackCard(layer: Kinetic.Layer): Card {
-    var card = CardManager.dealBlackCard();
-    card.view.offset({x: 0, y: 0});
-    card.view.setX(20);
-    card.view.setY(20);
-    layer.add(card.view);
-    return card;
-}
-
-var stage = new Kinetic.Stage({
-    container: 'container',
-    width: window.innerWidth,
-    height: window.innerHeight
-});
-
-var cardLayer = new Kinetic.Layer();
-var bgLayer = new Kinetic.Layer();
-
-CardManager.populateCardData(() => {
-    CardManager.shuffleCards();
-    dealOwnHand(cardLayer);
-    dealBlackCard(cardLayer);
-    cardLayer.draw();
-});
-
-bgLayer.add(new Kinetic.Rect({
-    width: stage.width(),
-    height: stage.height(),
-    fill: '#F6F6F6'
-}));
-
-stage.add(bgLayer);
-stage.add(cardLayer);

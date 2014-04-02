@@ -82,6 +82,7 @@ module CardManager {
                     y: height
                 }
             });
+
             var text = new Kinetic.Text({
                 x: 10,
                 y: 15,
@@ -93,6 +94,8 @@ module CardManager {
                 wrap: 'word',
                 fill: typeData['textColor']
             });
+            view.add(text);
+
             var border = new Kinetic.Rect({
                 x: 0,
                 y: 0,
@@ -101,21 +104,18 @@ module CardManager {
                 stroke: 'lightgray',
                 fillAlpha: 0.0
             });
-            var imageData = new Image();
-            imageData.onload = function () {
-                var image = new Kinetic.Image({
-                    x: 0,
-                    y: 0,
-                    image: imageData,
-                    width: width,
-                    height: height
-                });
+            view.add(border);
+
+            var image = new Kinetic.Image({
+                x: 0,
+                y: 0,
+                width: width,
+                height: height
+            });
+            Util.loadKineticImage(image, typeData['imageURL'], function () {
                 view.add(image);
-                view.add(text);
-                view.add(border);
-                view.draw();
-            };
-            imageData.src = typeData['imageURL'];
+            });
+
             view.on('click tap', (event) => {
                 this.onSelect(event);
             });

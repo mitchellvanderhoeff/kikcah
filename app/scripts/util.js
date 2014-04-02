@@ -1,6 +1,7 @@
 /**
  * Created by mitch on 2014-04-01.
  */
+/// <reference path="definitions/kinetic.d.ts" />
 var Util;
 (function (Util) {
    function getJSON(url, callback) {
@@ -28,5 +29,27 @@ var Util;
    }
 
    Util.shuffle = shuffle;
+
+   function rectInset(rect, inset) {
+      return {
+         x: rect.x + inset.x,
+         y: rect.y + inset.y,
+         width: rect.width - 2 * inset.x,
+         height: rect.height - 2 * inset.y
+      };
+   }
+
+   Util.rectInset = rectInset;
+
+   function loadKineticImage(image, url, callback) {
+      var imageData = new Image();
+      imageData.onload = function () {
+         image.image(imageData);
+         callback(imageData);
+      };
+      imageData.src = url;
+   }
+
+   Util.loadKineticImage = loadKineticImage;
 })(Util || (Util = {}));
 //# sourceMappingURL=util.js.map
