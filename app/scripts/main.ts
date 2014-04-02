@@ -1,95 +1,70 @@
 /**
  * Created by mitch on 2014-03-31.
  */
-/// <reference path="kinetic.d.ts" />
-/// <reference path="util.ts" />
-/// <reference path="cardManager.ts" />
+/// <reference path="definitions/kik.d.ts" />
+/// <reference path="definitions/kinetic.d.ts" />
+/// <reference path="firebaseAdapter.ts" />
 
-import Card = CardManager.Card;
-function generateOwnHand(layer, numCards: number = 8) {
-    for (var i = 0; i < numCards; i++) {
-        var card: Card = CardManager.dealWhiteCard();
-        var cardView = card.view;
-        var coefficient: number = ((i + 0.5) / numCards);
-        var offsetFromBottom: number = -650.0;
-        var cardFanRadius: number = 700.0;
-        var angleOffsetCoefficient = 0.44;
-        var angleStart = Math.PI * (1 - angleOffsetCoefficient);
-        var angleEnd = Math.PI * angleOffsetCoefficient;
-        var angleRadians: number = angleStart + (coefficient * (angleEnd - angleStart));
-        var angleDegrees: number = (angleRadians * (180 / Math.PI));
-        cardView.setX(stage.width() / 2 + cardFanRadius * Math.cos(angleRadians));
-        cardView.setY(stage.height() - cardFanRadius * Math.sin(angleRadians) - offsetFromBottom);
-        cardView.rotate(90 - angleDegrees);
-        layer.add(cardView);
-        var indicatorCircle = new Kinetic.Circle({
-            x: stage.width() / 2,
-            y: stage.height() - offsetFromBottom,
-            radius: cardFanRadius,
-            stroke: 'black',
-            fillAlpha: 0.0
-        });
-        var center = new Kinetic.Circle({
-            x: stage.width() / 2,
-            y: stage.height() - offsetFromBottom,
-            radius: 5,
-            fill: 'black'
-        });
-        layer.add(indicatorCircle);
-        layer.add(center);
+import KikUser = kik.KikUser;
 
-        var magnificationFactor = 1.3;
-        var magnifyTween = new Kinetic.Tween({
-            node: cardView,
-            scaleX: magnificationFactor,
-            scaleY: magnificationFactor,
-            easing: Kinetic.Easings.EaseInOut,
-            duration: 0.1
-        });
-        cardView['magnifyTween'] = magnifyTween;
+var kikUser: KikUser = null;
+var games: Array<Game> = [];
 
-        cardView.on('mouseover touchstart', function () {
-            this.moveToTop();
-            this.magnifyTween.play();
-            this.border.stroke('#D5D5F5');
-        });
+interface Game {
+    // Corresponds
+    players: Array<string>;
+    scores: Array<number>;
 
-        cardView.on('mouseout touchend', function () {
-            this.moveToBottom();
-            this.magnifyTween.reverse();
-            this.border.stroke('#E5E5E5');
-        });
+    dateStarted: Date;
+    currentBlackCardID: number;
+    currentGameMasterIndex: number;
+    winningScore: number;
 
-        cardView.on('touchmove mousemove', function (event) {
-
-        });
-
-        cardView.on('click touchend', function () {
-            this['model'].onSelect();
-        });
-    }
+    onSelected: (event: Event) => void
 }
 
-var stage = new Kinetic.Stage({
-    container: 'container',
-    width: window.innerWidth,
-    height: window.innerHeight
+kik.getUser(user => {
+    if (user) {
+        kikUser = user;
+        setup();
+    }
 });
 
-var cardLayer = new Kinetic.Layer();
-var bgLayer = new Kinetic.Layer();
+function setup() {
+    var userRef = firebase.createRef("/users/" + kikUser.username);
+    // Lazy instantiate the user ref
+    userRef.once('value', snapshot => {
+        if (snapshot.val() == null) {
+            userRef.set({
+                "username": kikUser.username,
+                "games": []
+            });
+        }
+    });
+    var gamesRef = firebase.createRef("/users/" + kikUser.username + "/games");
+    gamesRef.on('child_added', snapshot => {
+        var gameID = snapshot.val();
+        firebase.createRef("/games/" + gameID)
+            .once('value', gameSnapshot => {
+                var game: Game = gameSnapshot.val(); // Should fill in the fields if they exist
+                game.onSelected = (event: Event) => {
 
-CardManager.populateCardData(() => {
-    CardManager.shuffleCards();
-    generateOwnHand(cardLayer);
-    cardLayer.draw();
-});
+                };
+                games.push(game);
+            });
+    });
+}
 
-bgLayer.add(new Kinetic.Rect({
-    width: stage.width(),
-    height: stage.height(),
-    fill: '#EEEEEE'
-}));
+module GameList {
+    function generateGameCellForGame(game: Game, width: number =): Kinetic.Group {
+        var gameCell = new Kinetic.Group();
+        var border = new Kinetic.Rect({
 
-stage.add(bgLayer);
-stage.add(cardLayer);
+        });
+        return gameCell;
+    }
+
+    export function addGame(game: Game) {
+
+    }
+}

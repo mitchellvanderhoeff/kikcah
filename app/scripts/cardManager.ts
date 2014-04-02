@@ -1,7 +1,7 @@
 /**
  * Created by mitch on 2014-04-01.
  */
-/// <reference path="kinetic.d.ts" />
+/// <reference path="definitions/kinetic.d.ts" />
 /// <reference path="util.ts" />
 
 module CardManager {
@@ -23,15 +23,15 @@ module CardManager {
 
     export function populateCardData(callback: Function = (function () {
     })) {
-        Util.getJSON("/resources/cards.json", (json: string) => {
-            var parsed = JSON.parse(json);
-            parsed.forEach(cardData => {
+        Util.getJSON("/resources/cards.json", (cardDataArray: Array<Object>) => {
+            cardDataArray.forEach(cardData => {
                 if (cardData['expansion'] == "Base") {
+                    var cardText = cardData['text'];
                     if (cardData['cardType'] == "A") {
-                        var card = new Card(cardData['text'], 'white');
+                        var card = new Card(cardText, 'white');
                         allWhiteCards.push(card);
                     } else if (cardData["cardType"] == "Q") {
-                        var card = new Card(cardData['text'], 'black');
+                        var card = new Card(cardText, 'black');
                         allBlackCards.push(card);
                     }
                 }
@@ -59,16 +59,22 @@ module CardManager {
     }
 
     export class Card {
+        public text: string;
+        public type: string;
         public view: Kinetic.Group;
+        public selectionTween: Kinetic.Tween;
 
-        constructor(public text: string, public type: string) {
-            if (/\&\w+\;/.test(text)) { // Check if we have an escape sequence
-                this.text = decodeURIComponent(text);
-            }
+        private border: Kinetic.Rect;
+        private selected: boolean;
+
+        constructor(text: string, type: string) {
+            this.text = decodeURIComponent(text.replace("%", "%25"));
+            this.type = type;
+            this.setSelected(false);
             this.generateView();
         }
 
-        private generateView(width: number = 100, height: number = 150) {
+        private generateView(width: number = 100, height: number = 120) {
             var typeData = cardTypeInfo[this.type];
             var view = new Kinetic.Group({
                 offset: {
@@ -82,7 +88,7 @@ module CardManager {
                 width: width - 20,
                 height: height - 50,
                 text: this.text,
-                fontSize: 14,
+                fontSize: 13,
                 fontFamily: 'Helvetica',
                 wrap: 'word',
                 fill: typeData['textColor']
@@ -110,9 +116,30 @@ module CardManager {
                 view.draw();
             };
             imageData.src = typeData['imageURL'];
-            view['model'] = this;
-            view['border'] = border;
+            view.on('click tap', (event) => {
+                this.onSelect(event);
+            });
+            this.border = border;
             this.view = view;
+        }
+
+        private setSelected(selected: boolean) {
+            if (this.selectionTween != null) {
+                if (selected) {
+                    this.selectionTween.play();
+                } else {
+                    this.selectionTween.reverse();
+                }
+            }
+            this.selected = selected;
+        }
+
+        public onSelect(event: Event) {
+            this.setSelected(true);
+        }
+
+        public onDeselect(event: Event) {
+            this.setSelected(false);
         }
     }
 }
