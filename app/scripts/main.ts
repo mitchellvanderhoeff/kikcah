@@ -5,26 +5,19 @@
 /// <reference path="definitions/kinetic.d.ts" />
 /// <reference path="firebaseAdapter.ts" />
 /// <reference path="util.ts" />
+/// <reference path="game.ts" />
+/// <reference path="gameManager.ts" />
 
 import KikUser = kik.KikUser;
 import Rect = Util.Rect;
 
-interface Game {
-    // Corresponds
-    players: Array<string>;
-    scores: Array<number>;
-
-    dateStarted: Date;
-    currentBlackCardID: number;
-    currentGameMasterIndex: number;
-    winningScore: number;
-
-    onSelected: (event: Event) => void;
-}
-
 module Main {
     var kikUser: KikUser = null;
     var gameList: GameList;
+
+    var gamesRef: Firebase;
+    var userGamesRef: Firebase;
+
     var stage: Kinetic.Stage;
     var backgroundLayer: Kinetic.Layer;
     var titleLayer: Kinetic.Layer;
@@ -43,25 +36,46 @@ module Main {
     }
 
     function startNewGame() {
+        var newGame: Game = {
+            players: [kikUser.username],
+            scores: [0],
+            dateStarted: new Date().getTime(),
+            currentBlackCardID: -1,
+            currentGameMasterIndex: -1,
+            winningScore: 8,
+            onSelected: null
+        };
+        var newGameRef = gamesRef.push({});
+        newGameRef.set(newGame);
+        userGamesRef.push(newGameRef.name());
 
+        openGame(newGame);
     }
 
     export function openGame(game: Game) {
-
+        stage.destroyChildren();
+        new GameManager(stage, game).start();
     }
 
     function setupGameList() {
         gameListLayer = new Kinetic.Layer({
             x: 0,
-            y: titleLayer.width(),
+            y: titleLayer.y() + titleLayer.height(),
             width: stage.width(),
             height: stage.height() - titleLayer.height()
         });
-        gameList = new GameList(gameListLayer);
+        gameListLayer.add(new Kinetic.Rect({
+            fill: '#222',
+            width: gameListLayer.width(),
+            height: gameListLayer.height()
+        }));
+        gameList = new GameList(userGamesRef, gameListLayer);
+
         stage.add(gameListLayer);
+        console.log("Game list setup finished");
     }
 
-    function setupGraphics() {
+    function setupTitleLayer() {
         stage = new Kinetic.Stage({
             container: 'container',
             width: window.innerWidth,
@@ -69,24 +83,42 @@ module Main {
         });
 
         backgroundLayer = new Kinetic.Layer({
-            fill: 'black',
             width: stage.width(),
             height: stage.height()
         });
 
-        titleLayer = new Kinetic.Layer({
+        backgroundLayer.add(new Kinetic.Rect({
             fill: 'black',
+            width: backgroundLayer.width(),
+            height: backgroundLayer.height()
+        }));
+
+        titleLayer = new Kinetic.Layer({
             x: 0,
             y: 0,
             width: stage.width(),
-            height: 180
+            height: 130
+        });
+
+        var titleText = new Kinetic.Text({
+            x: 0,
+            y: 5,
+            width: titleLayer.width(),
+            height: 40,
+            fontSize: 30,
+            fontFamily: 'Helvetica',
+            fontStyle: 'bold',
+            align: 'center',
+            wrap: 'Word',
+            fill: 'white',
+            text: "Cards Against Humanity"
         });
 
         var buttonRect: Rect = Util.rectInset({
             x: 0,
-            y: 60,
-            width: stage.width(),
-            height: 80
+            y: titleText.getY() + titleText.getHeight() + 10,
+            width: titleLayer.width(),
+            height: 50
         }, {
             x: 30,
             y: 0
@@ -108,37 +140,44 @@ module Main {
         }));
 
         newGameButton.add(new Kinetic.Text({
+            width: newGameButton.width(),
+            height: newGameButton.height(),
+            y: newGameButton.height() / 4,
             fill: 'white',
-            fontFamily: 'Arial',
-            fontSize: 18,
+            fontFamily: 'Helvetica',
+            fontStyle: 'bold',
+            align: 'center',
+            fontSize: 30,
             text: "New Game"
         }));
+
+        newGameButton.on('touchstart mousedown', function (event: Event) {
+            this.getChildren().each(child => child.opacity(0.8));
+            titleLayer.draw();
+        });
+
+        newGameButton.on('touchend mouseup mouseout', function (event: Event) {
+            this.getChildren().each(child => child.opacity(1.0));
+            titleLayer.draw();
+        });
 
         newGameButton.on('click tap', (event: Event) => {
             startNewGame();
         });
 
+        titleLayer.add(titleText);
         titleLayer.add(newGameButton);
 
-        var image = new Kinetic.Image({
-            x: 0,
-            y: 0
-        });
-        Util.loadKineticImage(image, '/resources/CAHlogo.png', (imageData: HTMLImageElement) => {
-            image.width(imageData.width);
-            image.height(imageData.height);
-            titleLayer.add(image);
-        });
-
-        stage.add(titleLayer);
         stage.add(backgroundLayer);
-        stage.draw();
+        stage.add(titleLayer);
+
+        console.log("Title setup finished");
     }
 
     function setupData() {
-        var userRef = firebase.createRef("/users/" + kikUser.username);
+        var userRef = firebase.ref("/users/" + kikUser.username);
         // Lazy instantiate the user ref
-        userRef.getValueOnce(snapshot => {
+        userRef.once('value', snapshot => {
             if (snapshot.val() == null) {
                 userRef.set({
                     "username": kikUser.username,
@@ -146,44 +185,60 @@ module Main {
                 });
             }
         });
-        var gamesRef = firebase.createRef("/users/" + kikUser.username + "/games");
-        gamesRef.onChildAdded(snapshot => {
-            var gameID = snapshot.val();
-            firebase.createRef("/games/" + gameID)
-                .getValueOnce(gameSnapshot => {
-                    var game: Game = gameSnapshot.val(); // Should fill in the fields if they exist
-                    game.onSelected = function () {
-                        openGame(this);
-                    };
-                    gameList.addGame(game);
-                });
-        });
+        userGamesRef = userRef.child('participatingGames');
+
+        gamesRef = firebase.ref("/games/");
+        console.log("Data setup finished");
     }
 
     function setup() {
-        setupGraphics();
-        setupGameList();
         setupData();
+        setupTitleLayer();
+        setupGameList();
+        console.log("App started");
     }
 }
 
 class GameList {
-    public layer: Kinetic.Layer;
-    private games: Array<Game> = [];
     public cellHeight: number = 60;
     public cellPadding: number = 10;
 
-    constructor(layer: Kinetic.Layer) {
+    private games: Array<Game>;
+    private layer: Kinetic.Layer;
+    private userGamesRef: Firebase;
+    private numGames: number = 0;
+
+    constructor(userGamesRef: Firebase, layer: Kinetic.Layer) {
+        this.userGamesRef = userGamesRef;
         this.layer = layer;
+        this.games = [];
+
+        userGamesRef.on('child_added', gameIDSnapshot => {
+            var gameID = gameIDSnapshot.val();
+            console.log("Adding game with ID " + gameID);
+            firebase.ref("/games/" + gameID)
+                .once('value', gameSnapshot => {
+                    var game: Game = gameSnapshot.val();
+                    game.onSelected = function () {
+                        Main.openGame(this);
+                    };
+                    this.games.push(game);
+                    this.addCellForGame(game);
+                });
+        });
     }
 
     private addCellForGame(game: Game) {
         var buttonRect = {
             x: 0,
-            y: this.games.length * (this.cellHeight + this.cellPadding),
+            y: this.numGames * (this.cellHeight + this.cellPadding),
             width: this.layer.width(),
             height: this.cellHeight
         };
+
+        console.log("Adding game cell with rect " + JSON.stringify(buttonRect));
+
+        this.numGames += 1;
 
         var gameItem = new Kinetic.Group({
             x: buttonRect.x,
@@ -193,23 +248,50 @@ class GameList {
         });
 
         gameItem.add(new Kinetic.Rect({
+            x: buttonRect.x,
+            y: buttonRect.y,
+            width: buttonRect.width,
+            height: buttonRect.height,
             stroke: 'white',
             strokeWidth: 3,
-            cornerRadius: 20,
-            width: gameItem.width(),
-            height: gameItem.height()
+            cornerRadius: 5
         }));
 
-        // TODO: put some data in cell about game
+        var textRect = Util.rectInset({
+            x: 0,
+            y: 0,
+            width: gameItem.width(),
+            height: gameItem.height()
+        }, {
+            x: 15,
+            y: 10
+        });
+
+        var text = game.players.length + " Player" + (game.players.length != 1 ? 's' : '') + " - ";
+        for (var index in game.players) {
+            text += game.players[index];
+            if (index < game.players.length - 1) {
+                text += ", "
+            }
+        }
+        gameItem.add(new Kinetic.Text({
+            x: textRect.x,
+            y: textRect.y,
+            width: textRect.width,
+            height: textRect.height,
+            fontFamily: 'Helvetica',
+            fontStyle: 'bold',
+            fontSize: 20,
+            fill: 'white',
+            text: text
+        }));
 
         gameItem.on('click tap', (event: Event) => {
             game.onSelected(event);
         });
-    }
 
-    public addGame(game: Game) {
-        this.games.push(game);
-        this.addCellForGame(game);
+        this.layer.add(gameItem);
+        this.layer.draw();
     }
 }
 
