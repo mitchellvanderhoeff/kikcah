@@ -26,15 +26,18 @@ module Main {
     var kikUser: KikUser = null;
     var gameList: GameList;
     var stage: Kinetic.Stage;
-    var mainLayer: Kinetic.Layer;
+    var backgroundLayer: Kinetic.Layer;
     var titleLayer: Kinetic.Layer;
     var gameListLayer: Kinetic.Layer;
 
     export function main() {
+        console.log("Starting app..");
         kik.getUser(user => {
             if (user) {
                 kikUser = user;
                 setup();
+            } else {
+                console.error("Could not get user info");
             }
         });
     }
@@ -51,10 +54,11 @@ module Main {
         gameListLayer = new Kinetic.Layer({
             x: 0,
             y: titleLayer.width(),
-            width: mainLayer.width(),
-            height: mainLayer.height() - titleLayer.height()
+            width: stage.width(),
+            height: stage.height() - titleLayer.height()
         });
         gameList = new GameList(gameListLayer);
+        stage.add(gameListLayer);
     }
 
     function setupGraphics() {
@@ -64,16 +68,17 @@ module Main {
             height: window.innerHeight
         });
 
-        mainLayer = new Kinetic.Layer({
+        backgroundLayer = new Kinetic.Layer({
             fill: 'black',
             width: stage.width(),
             height: stage.height()
         });
 
         titleLayer = new Kinetic.Layer({
+            fill: 'black',
             x: 0,
             y: 0,
-            width: mainLayer.width(),
+            width: stage.width(),
             height: 180
         });
 
@@ -125,9 +130,9 @@ module Main {
             titleLayer.add(image);
         });
 
-        mainLayer.add(titleLayer);
-
-        stage.add(mainLayer);
+        stage.add(titleLayer);
+        stage.add(backgroundLayer);
+        stage.draw();
     }
 
     function setupData() {
@@ -204,6 +209,7 @@ class GameList {
 
     public addGame(game: Game) {
         this.games.push(game);
+        this.addCellForGame(game);
     }
 }
 

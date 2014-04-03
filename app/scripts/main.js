@@ -10,15 +10,18 @@ var Main;
    var kikUser = null;
    var gameList;
    var stage;
-   var mainLayer;
+   var backgroundLayer;
    var titleLayer;
    var gameListLayer;
 
    function main() {
+      console.log("Starting app..");
       kik.getUser(function (user) {
          if (user) {
             kikUser = user;
             setup();
+         } else {
+            console.error("Could not get user info");
          }
       });
    }
@@ -37,10 +40,11 @@ var Main;
       gameListLayer = new Kinetic.Layer({
          x: 0,
          y: titleLayer.width(),
-         width: mainLayer.width(),
-         height: mainLayer.height() - titleLayer.height()
+         width: stage.width(),
+         height: stage.height() - titleLayer.height()
       });
       gameList = new GameList(gameListLayer);
+      stage.add(gameListLayer);
    }
 
    function setupGraphics() {
@@ -50,16 +54,17 @@ var Main;
          height: window.innerHeight
       });
 
-      mainLayer = new Kinetic.Layer({
+      backgroundLayer = new Kinetic.Layer({
          fill: 'black',
          width: stage.width(),
          height: stage.height()
       });
 
       titleLayer = new Kinetic.Layer({
+         fill: 'black',
          x: 0,
          y: 0,
-         width: mainLayer.width(),
+         width: stage.width(),
          height: 180
       });
 
@@ -111,9 +116,9 @@ var Main;
          titleLayer.add(image);
       });
 
-      mainLayer.add(titleLayer);
-
-      stage.add(mainLayer);
+      stage.add(titleLayer);
+      stage.add(backgroundLayer);
+      stage.draw();
    }
 
    function setupData() {
@@ -187,6 +192,7 @@ var GameList = (function () {
 
    GameList.prototype.addGame = function (game) {
       this.games.push(game);
+      this.addCellForGame(game);
    };
    return GameList;
 })();
