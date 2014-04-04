@@ -17,13 +17,13 @@ class GameManager {
     private bgLayer: Kinetic.Layer;
     private topBarLayer: Kinetic.Layer;
     private gameLayer: Kinetic.Layer;
-    private cardsGroup: Kinetic.Group;
     private submittedCardText: Kinetic.Text;
     private selectedCard: Card;
 
     private players: Array<Object> = [];
     private whiteCardsMap: Object = {};
     private blackCard: string;
+    private myPlayer: Object;
     private isGameMaster: boolean = false;
 
     private playersRef: Firebase;
@@ -41,6 +41,7 @@ class GameManager {
             var playerName = player['username'];
             if (!this.myPlayerRef && playerName == this.kikUser.username) {
                 this.myPlayerRef = snapshot.ref();
+                this.myPlayer = player;
                 this.whiteCardsRef = this.myPlayerRef.child('whiteCards');
                 this.start();
             }
@@ -234,9 +235,9 @@ class GameManager {
                         this.blackCardRef.set(snapshot.val());
                         this.renderBlackCard()
                     });
-                return;
+            } else {
+                this.renderBlackCard();
             }
-            this.renderBlackCard();
         });
 
         this.gameRef.child('currentGameMasterIndex').on('value', snapshot => {
@@ -246,8 +247,10 @@ class GameManager {
 
         this.gameRef.child('submittedWhiteCards').on('value', snapshot => {
             var numSubmitted = snapshot.numChildren();
-            this.submittedCardText.text(numSubmitted + " submitted");
-            this.gameLayer.draw();
+            var plural = numSubmitted != 1 ? 's' : '';
+            this.submittedCardText.text("Score: " + this.myPlayer['score'] + "\n\n"
+                + numSubmitted + " player" + plural + " submitted");
+            this.submittedCardText.draw();
             if (this.isGameMaster && numSubmitted == this.players.length - 1) {
                 // todo: display cards to choose from for the game master
             }
@@ -334,25 +337,27 @@ class GameManager {
             x: 70,
             y: 130
         });
-        var submittedCardView = new Card("", 'white').generateView();
-        this.submittedCardText = Util.makeText({
-            fill: 'black',
-            fontSize: 16,
-            align: 'center',
-            width: submittedCardView.width(),
-            x: 0,
-            y: submittedCardView.height() / 2,
-            text: "0 submitted"
-        });
-        submittedCardView.position({
-            x: blackCard.view.x() + 120,
-            y: blackCard.view.y()
-        });
-        submittedCardView.add(this.submittedCardText);
-        this.gameLayer.add(submittedCardView);
-        this.submittedCardText.moveToTop();
         blackCard.view.moveToBottom();
-        submittedCardView.moveToBottom();
+        if (!this.submittedCardText) {
+            var submittedCardView = new Card("", 'white').generateView();
+            this.submittedCardText = Util.makeText({
+                fill: 'black',
+                fontSize: 16,
+                align: 'center',
+                width: submittedCardView.width(),
+                x: 0,
+                y: 20,
+                text: "Loading.."
+            });
+            submittedCardView.position({
+                x: blackCard.view.x() + 120,
+                y: blackCard.view.y()
+            });
+            submittedCardView.add(this.submittedCardText);
+            this.gameLayer.add(submittedCardView);
+            this.submittedCardText.moveToTop();
+            submittedCardView.moveToBottom();
+        }
         this.gameLayer.draw();
     }
 }

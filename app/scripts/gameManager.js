@@ -27,6 +27,7 @@ var GameManager = (function () {
            var playerName = player['username'];
            if (!_this.myPlayerRef && playerName == _this.kikUser.username) {
                 _this.myPlayerRef = snapshot.ref();
+              _this.myPlayer = player;
                 _this.whiteCardsRef = _this.myPlayerRef.child('whiteCards');
               _this.start();
             }
@@ -214,9 +215,9 @@ var GameManager = (function () {
                 _this.blackCardRef.set(snapshot.val());
                 _this.renderBlackCard();
              });
-             return;
+          } else {
+                _this.renderBlackCard();
             }
-          _this.renderBlackCard();
         });
 
         this.gameRef.child('currentGameMasterIndex').on('value', function (snapshot) {
@@ -226,8 +227,9 @@ var GameManager = (function () {
 
        this.gameRef.child('submittedWhiteCards').on('value', function (snapshot) {
           var numSubmitted = snapshot.numChildren();
-          _this.submittedCardText.text(numSubmitted + " submitted");
-          _this.gameLayer.draw();
+          var plural = numSubmitted != 1 ? 's' : '';
+          _this.submittedCardText.text("Score: " + _this.myPlayer['score'] + "\n\n" + numSubmitted + " player" + plural + " submitted");
+          _this.submittedCardText.draw();
           if (_this.isGameMaster && numSubmitted == _this.players.length - 1) {
              // todo: display cards to choose from for the game master
             }
@@ -312,25 +314,27 @@ var GameManager = (function () {
          x: 70,
          y: 130
       });
-      var submittedCardView = new Card("", 'white').generateView();
-      this.submittedCardText = Util.makeText({
-         fill: 'black',
-         fontSize: 16,
-         align: 'center',
-         width: submittedCardView.width(),
-         x: 0,
-         y: submittedCardView.height() / 2,
-         text: "0 submitted"
-      });
-      submittedCardView.position({
-         x: blackCard.view.x() + 120,
-         y: blackCard.view.y()
-      });
-      submittedCardView.add(this.submittedCardText);
-      this.gameLayer.add(submittedCardView);
-      this.submittedCardText.moveToTop();
       blackCard.view.moveToBottom();
-      submittedCardView.moveToBottom();
+      if (!this.submittedCardText) {
+         var submittedCardView = new Card("", 'white').generateView();
+         this.submittedCardText = Util.makeText({
+            fill: 'black',
+            fontSize: 16,
+            align: 'center',
+            width: submittedCardView.width(),
+            x: 0,
+            y: 20,
+            text: "Loading.."
+         });
+         submittedCardView.position({
+            x: blackCard.view.x() + 120,
+            y: blackCard.view.y()
+         });
+         submittedCardView.add(this.submittedCardText);
+         this.gameLayer.add(submittedCardView);
+         this.submittedCardText.moveToTop();
+         submittedCardView.moveToBottom();
+      }
       this.gameLayer.draw();
     };
     GameManager.topBarHeight = 55;
