@@ -31,12 +31,10 @@ var CardManager;
                     }
                 }
             });
-            Util.shuffle(whiteDeck).forEach(function (cardText) {
-                whiteDeckRef.push(cardText);
-            });
-            Util.shuffle(blackDeck).forEach(function (cardText) {
-                blackDeckRef.push(cardText);
-            });
+           whiteDeck = Util.shuffle(whiteDeck);
+           blackDeck = Util.shuffle(blackDeck);
+           whiteDeckRef.set(whiteDeck);
+           blackDeckRef.set(blackDeck);
             console.log("Parsed " + whiteDeck.length + " white cards and " + blackDeck.length + " black cards");
         });
     }
@@ -44,14 +42,19 @@ var CardManager;
 
     var Card = (function () {
         function Card(text, type) {
+           this.onSelect = function () {
+           };
+           this.onDeselect = function () {
+           };
+           this.selected = false;
             this.text = decodeURIComponent(text.replace("%", "%25"));
             this.type = type;
-            this.setSelected(false);
             this.generateView();
         }
         Card.prototype.generateView = function (width, height) {
-            var _this = this;
-            if (typeof width === "undefined") { width = 100; }
+           if (typeof width === "undefined") {
+              width = 110;
+           }
             if (typeof height === "undefined") { height = 120; }
             var typeData = cardTypeInfo[this.type];
             var view = new Kinetic.Group({
@@ -63,11 +66,11 @@ var CardManager;
 
             var text = new Kinetic.Text({
                 x: 10,
-                y: 15,
-                width: width - 20,
-                height: height - 50,
+               y: 10,
+               width: width - 15,
+               height: height - 15,
                 text: this.text,
-                fontSize: 13,
+               fontSize: 11,
                 fontFamily: 'Helvetica',
                 wrap: 'word',
                 fill: typeData['textColor']
@@ -92,16 +95,16 @@ var CardManager;
             });
             Util.loadKineticImage(image, typeData['imageURL'], function () {
                 view.add(image);
+               text.moveToTop();
+               view.getLayer().draw();
             });
 
-            view.on('click tap', function (event) {
-                _this.onSelect(event);
-            });
             this.border = border;
             this.view = view;
         };
 
         Card.prototype.setSelected = function (selected) {
+           this.selected = selected;
             if (this.selectionTween != null) {
                 if (selected) {
                     this.selectionTween.play();
@@ -109,15 +112,6 @@ var CardManager;
                     this.selectionTween.reverse();
                 }
             }
-            this.selected = selected;
-        };
-
-        Card.prototype.onSelect = function (event) {
-            this.setSelected(true);
-        };
-
-        Card.prototype.onDeselect = function (event) {
-            this.setSelected(false);
         };
         return Card;
     })();

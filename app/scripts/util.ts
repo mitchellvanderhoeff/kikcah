@@ -20,7 +20,7 @@ module Util {
         var dest: Array<T> = [];
         var length = src.length;
         for (var i = 0; i < length; i++) {
-            var randomIndex = Math.round(Math.random() * src.length);
+            var randomIndex = Math.floor(Math.random() * src.length);
             dest.push(src[randomIndex]);
         }
         return dest;

@@ -17,16 +17,19 @@ var GameManager = (function () {
         this.kikUser = kikUser;
         this.players = [];
         this.whiteCards = [];
+       this.setupGraphics();
+       this.blackCardRef = gameRef.child('currentBlackCard');
         this.playersRef = gameRef.child('players');
         this.playersRef.on('child_added', function (snapshot) {
             var player = snapshot.val();
-            if (!_this.myPlayerRef && player['username'] == _this.kikUser.username) {
+           _this.players.push(player);
+           var playerName = player['username'];
+           if (!_this.myPlayerRef && playerName == _this.kikUser.username) {
                 _this.myPlayerRef = snapshot.ref();
                 _this.whiteCardsRef = _this.myPlayerRef.child('whiteCards');
+              _this.start();
             }
-            _this.players.push(player);
         });
-        this.setupGraphics();
     }
     GameManager.makeBack = function () {
         var view = new Kinetic.Group();
@@ -123,7 +126,8 @@ var GameManager = (function () {
 
         this.gameLayer = new Kinetic.Layer({
             width: this.stage.width(),
-            height: this.stage.height() - this.topBarLayer.height(),
+           height: this.stage.height() - this.topBarLayer.height() - this.topBarLayer.x(),
+           x: 0,
             y: this.topBarLayer.height()
         });
 
@@ -144,6 +148,8 @@ var GameManager = (function () {
             var numCardsToAdd = GameManager.requiredNumWhiteCards - numCardsInHand;
             if (numCardsToAdd > 0) {
                 addingCards = true;
+
+               // todo: what if no cards left in white deck?
                 _this.gameRef.child('whiteDeck').limit(numCardsToAdd).once('child_added', function (cardSnapshot) {
                     numCardsToAdd -= 1;
                     if (numCardsToAdd == 0) {
@@ -151,15 +157,21 @@ var GameManager = (function () {
                     }
                     var cardText = cardSnapshot.val();
                     _this.whiteCardsRef.push(cardText);
-                    _this.whiteCards.push(cardText);
                     cardSnapshot.ref().remove();
                 });
             } else {
+               _this.whiteCards = _.values(snapshot.val()); // extract cards from node
+               _this.renderWhiteCards();
             }
         });
 
+       this.blackCardRef.on('value', function (snapshot) {
+          _this.blackCard = snapshot.val();
+          _this.renderBlackCard();
+       });
+
         this.gameRef.child('currentGameMasterIndex').on('value', function (snapshot) {
-            var gameMaster = _this.players[snapshot.val()];
+           var gameMaster = _this.players[snapshot.val() || 0];
             if (gameMaster['username'] == _this.kikUser.username) {
             } else {
             }
@@ -167,7 +179,7 @@ var GameManager = (function () {
     };
 
     GameManager.prototype.calculateFanPosition = function (coefficient) {
-        var offsetFromBottom = -650.0;
+       var offsetFromBottom = -630.0;
         var cardFanRadius = 700.0;
         var angleOffsetCoefficient = 0.455;
         var angleStart = Math.PI * (1 - angleOffsetCoefficient);
@@ -181,36 +193,54 @@ var GameManager = (function () {
         };
     };
 
-    GameManager.prototype.dealOwnHand = function (layer, numCards) {
-        if (typeof numCards === "undefined") { numCards = 8; }
+   GameManager.prototype.renderWhiteCards = function () {
+      var _this = this;
         var cards = [];
-        for (var i = 0; i < numCards; i++) {
-            var card = null;
-            var coefficient = ((i + 0.5) / numCards);
-            var fanPosition = this.calculateFanPosition(coefficient);
+      this.selectedCard = null;
+      this.whiteCards.forEach(function (whiteCard) {
+         var card = new Card(whiteCard, 'white');
+         cards.push(card);
+         var coefficient = ((cards.length - 0.5) / GameManager.requiredNumWhiteCards);
+         var fanPosition = _this.calculateFanPosition(coefficient);
             card.view.setX(fanPosition.x);
             card.view.setY(fanPosition.y);
             card.view.rotate(fanPosition.rotation);
-            layer.add(card.view);
+         card.view.on('click tap', function () {
+            if (card.selected) {
+            } else {
+               if (_this.selectedCard) {
+                  _this.selectedCard.setSelected(false);
+               }
+               card.setSelected(true);
+               _this.selectedCard = card;
+            }
+         });
+         card.onSelect = function () {
+         };
+         _this.gameLayer.add(card.view);
 
             var magnificationFactor = 1.3;
-            var magnifyTween = new Kinetic.Tween({
+
+         var magnifyTween = new Kinetic.Tween({
                 node: card.view,
                 scaleX: magnificationFactor,
                 scaleY: magnificationFactor,
-                y: card.view.getY() - 70,
+            y: card.view.getY() - 100,
                 easing: Kinetic.Easings.EaseInOut,
                 duration: 0.1
             });
-            card.selectionTween = magnifyTween;
 
-            cards.push(card);
-        }
-        for (var i = 0; i < numCards; i++) {
-            var view = cards[i].view;
-            view.setZIndex(i);
-        }
-        return cards;
+         card.selectionTween = magnifyTween;
+      });
+   };
+
+   GameManager.prototype.renderBlackCard = function () {
+      var card = new Card(this.blackCard, 'black');
+      this.gameLayer.add(card.view);
+      card.view.position({
+         x: 70,
+         y: 130
+      });
     };
     GameManager.topBarHeight = 55;
     GameManager.requiredNumWhiteCards = 8;

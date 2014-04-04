@@ -17,24 +17,31 @@ class GameManager {
     private bgLayer: Kinetic.Layer;
     private topBarLayer: Kinetic.Layer;
     private gameLayer: Kinetic.Layer;
+    private selectedCard: Card;
 
     private players: Array<Object> = [];
     private whiteCards: Array<string> = [];
+    private blackCard: string;
+
     private playersRef: Firebase;
     private myPlayerRef: Firebase;
     private whiteCardsRef: Firebase;
+    private blackCardRef: Firebase;
 
     constructor(private stage: Kinetic.Stage, private gameRef: Firebase, private kikUser: KikUser) {
+        this.setupGraphics();
+        this.blackCardRef = gameRef.child('currentBlackCard');
         this.playersRef = gameRef.child('players');
-        this.playersRef.on('child_added', snapshot => {
+        this.playersRef.on('child_added', (snapshot) => {
             var player = snapshot.val();
-            if (!this.myPlayerRef && player['username'] == this.kikUser.username) {
+            this.players.push(player);
+            var playerName = player['username'];
+            if (!this.myPlayerRef && playerName == this.kikUser.username) {
                 this.myPlayerRef = snapshot.ref();
                 this.whiteCardsRef = this.myPlayerRef.child('whiteCards');
+                this.start();
             }
-            this.players.push(player);
         });
-        this.setupGraphics();
     }
 
     private static makeBack(): Kinetic.Group {
@@ -131,7 +138,8 @@ class GameManager {
 
         this.gameLayer = new Kinetic.Layer({
             width: this.stage.width(),
-            height: this.stage.height() - this.topBarLayer.height(),
+            height: this.stage.height() - this.topBarLayer.height() - this.topBarLayer.x(),
+            x: 0,
             y: this.topBarLayer.height()
         });
 
@@ -151,6 +159,7 @@ class GameManager {
             var numCardsToAdd = GameManager.requiredNumWhiteCards - numCardsInHand;
             if (numCardsToAdd > 0) {
                 addingCards = true;
+                // todo: what if no cards left in white deck?
                 this.gameRef
                     .child('whiteDeck')
                     .limit(numCardsToAdd)
@@ -161,16 +170,21 @@ class GameManager {
                         }
                         var cardText = cardSnapshot.val();
                         this.whiteCardsRef.push(cardText);
-                        this.whiteCards.push(cardText);
                         cardSnapshot.ref().remove();
                     });
             } else {
-
+                this.whiteCards = _.values(snapshot.val()); // extract cards from node
+                this.renderWhiteCards();
             }
         });
 
+        this.blackCardRef.on('value', snapshot => {
+            this.blackCard = snapshot.val();
+            this.renderBlackCard();
+        });
+
         this.gameRef.child('currentGameMasterIndex').on('value', snapshot => {
-            var gameMaster = this.players[snapshot.val()];
+            var gameMaster = this.players[snapshot.val() || 0];
             if (gameMaster['username'] == this.kikUser.username) {
 
             } else {
@@ -180,7 +194,7 @@ class GameManager {
     }
 
     private calculateFanPosition(coefficient: number): { x: number; y: number; rotation: number } {
-        var offsetFromBottom: number = -650.0;
+        var offsetFromBottom: number = -630.0;
         var cardFanRadius: number = 700.0;
         var angleOffsetCoefficient = 0.455;
         var angleStart = Math.PI * (1 - angleOffsetCoefficient);
@@ -194,34 +208,54 @@ class GameManager {
         }
     }
 
-    private dealOwnHand(layer: Kinetic.Layer, numCards: number = 8): Array<Card> {
+    private renderWhiteCards() {
         var cards: Array<Card> = [];
-        for (var i = 0; i < numCards; i++) {
-            var card: Card = null;
-            var coefficient: number = ((i + 0.5) / numCards);
+        this.selectedCard = null;
+        this.whiteCards.forEach(whiteCard => {
+            var card: Card = new Card(whiteCard, 'white');
+            cards.push(card);
+            var coefficient: number = ((cards.length - 0.5) / GameManager.requiredNumWhiteCards);
             var fanPosition = this.calculateFanPosition(coefficient);
             card.view.setX(fanPosition.x);
             card.view.setY(fanPosition.y);
             card.view.rotate(fanPosition.rotation);
-            layer.add(card.view);
+            card.view.on('click tap', () => {
+                if (card.selected) { // Submit the card
+
+                } else {
+                    if (this.selectedCard) {
+                        this.selectedCard.setSelected(false);
+                    }
+                    card.setSelected(true);
+                    this.selectedCard = card;
+                }
+            });
+            card.onSelect = function () {
+
+            };
+            this.gameLayer.add(card.view);
 
             var magnificationFactor = 1.3;
+
             var magnifyTween = new Kinetic.Tween({
                 node: card.view,
                 scaleX: magnificationFactor,
                 scaleY: magnificationFactor,
-                y: card.view.getY() - 70,
+                y: card.view.getY() - 100,
                 easing: Kinetic.Easings.EaseInOut,
                 duration: 0.1
             });
-            card.selectionTween = magnifyTween;
 
-            cards.push(card);
-        }
-        for (var i = 0; i < numCards; i++) {
-            var view: Kinetic.Group = cards[i].view;
-            view.setZIndex(i);
-        }
-        return cards;
+            card.selectionTween = magnifyTween;
+        });
+    }
+
+    private renderBlackCard() {
+        var card: Card = new Card(this.blackCard, 'black');
+        this.gameLayer.add(card.view);
+        card.view.position({
+            x: 70,
+            y: 130
+        });
     }
 }

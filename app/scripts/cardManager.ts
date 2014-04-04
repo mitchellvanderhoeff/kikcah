@@ -31,12 +31,10 @@ module CardManager {
                     }
                 }
             });
-            Util.shuffle(whiteDeck).forEach(cardText => {
-                whiteDeckRef.push(cardText);
-            });
-            Util.shuffle(blackDeck).forEach(cardText => {
-                blackDeckRef.push(cardText);
-            });
+            whiteDeck = Util.shuffle(whiteDeck);
+            blackDeck = Util.shuffle(blackDeck);
+            whiteDeckRef.set(whiteDeck);
+            blackDeckRef.set(blackDeck);
             console.log("Parsed " + whiteDeck.length + " white cards and " + blackDeck.length + " black cards");
         });
     }
@@ -47,17 +45,21 @@ module CardManager {
         public view: Kinetic.Group;
         public selectionTween: Kinetic.Tween;
 
+        public onSelect: () => void = () => {
+        };
+        public onDeselect: () => void = () => {
+        };
+
         private border: Kinetic.Rect;
-        private selected: boolean;
+        public selected: boolean = false;
 
         constructor(text: string, type: string) {
             this.text = decodeURIComponent(text.replace("%", "%25"));
             this.type = type;
-            this.setSelected(false);
             this.generateView();
         }
 
-        private generateView(width: number = 100, height: number = 120) {
+        private generateView(width: number = 110, height: number = 120) {
             var typeData = cardTypeInfo[this.type];
             var view = new Kinetic.Group({
                 offset: {
@@ -68,11 +70,11 @@ module CardManager {
 
             var text = new Kinetic.Text({
                 x: 10,
-                y: 15,
-                width: width - 20,
-                height: height - 50,
+                y: 10,
+                width: width - 15,
+                height: height - 15,
                 text: this.text,
-                fontSize: 13,
+                fontSize: 11,
                 fontFamily: 'Helvetica',
                 wrap: 'word',
                 fill: typeData['textColor']
@@ -97,16 +99,16 @@ module CardManager {
             });
             Util.loadKineticImage(image, typeData['imageURL'], function () {
                 view.add(image);
+                text.moveToTop();
+                view.getLayer().draw();
             });
 
-            view.on('click tap', (event) => {
-                this.onSelect(event);
-            });
             this.border = border;
             this.view = view;
         }
 
-        private setSelected(selected: boolean) {
+        public setSelected(selected: boolean) {
+            this.selected = selected;
             if (this.selectionTween != null) {
                 if (selected) {
                     this.selectionTween.play();
@@ -114,15 +116,6 @@ module CardManager {
                     this.selectionTween.reverse();
                 }
             }
-            this.selected = selected;
-        }
-
-        public onSelect(event: Event) {
-            this.setSelected(true);
-        }
-
-        public onDeselect(event: Event) {
-            this.setSelected(false);
         }
     }
 }

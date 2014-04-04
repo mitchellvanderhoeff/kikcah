@@ -27,7 +27,7 @@ var Main = (function () {
 
     Main.prototype.startNewGame = function () {
         var newGame = {
-            players: {},
+           players: [],
             dateStarted: new Date().getTime(),
             blackDeck: null,
             whiteDeck: null,
@@ -53,7 +53,7 @@ var Main = (function () {
 
     Main.prototype.openGame = function (gameRef) {
         stage.destroyChildren();
-        new GameManager(stage, gameRef, this.kikUser).start();
+       new GameManager(stage, gameRef, this.kikUser);
     };
 
     Main.prototype.setupGameList = function () {
@@ -68,7 +68,7 @@ var Main = (function () {
             width: this.gameListLayer.width(),
             height: this.gameListLayer.height()
         }));
-        this.gameList = new GameList(this.userGamesRef, this.gameListLayer, this.openGame);
+       this.gameList = new GameList(this);
 
         this.stage.add(this.gameListLayer);
         console.log("Game list setup finished");
@@ -147,7 +147,7 @@ var Main = (function () {
 
         Util.addDownstate(newGameButton);
 
-        newGameButton.on('click tap', function (event) {
+       newGameButton.on('click tap', function () {
             _this.startNewGame();
         });
 
@@ -189,20 +189,21 @@ var Main = (function () {
 })();
 
 var GameList = (function () {
-    function GameList(userGamesRef, layer, openGame) {
+   function GameList(main) {
         var _this = this;
+      this.main = main;
         this.numGames = 0;
-        this.userGamesRef = userGamesRef;
-        this.layer = layer;
+      this.userGamesRef = this.main.userGamesRef;
+      this.layer = this.main.gameListLayer;
 
-        userGamesRef.on('child_added', function (gameIDSnapshot) {
+      this.userGamesRef.on('child_added', function (gameIDSnapshot) {
             var gameID = gameIDSnapshot.val();
             console.log("Adding game with ID " + gameID);
             var gameRef = firebase.ref("/games/" + gameID);
             gameRef.once('value', function (gameSnapshot) {
                 var game = gameSnapshot.val();
                 game.onSelected = function () {
-                    openGame(gameRef);
+                   _this.main.openGame(gameRef);
                 };
                 _this.addCellForGame(game);
             });
@@ -252,7 +253,7 @@ var GameList = (function () {
         var playerCount = 0;
         for (var index in game.players) {
             playerCount += 1;
-            textSecondPart += game.players[index] + ", ";
+           textSecondPart += game.players[index].username + ", ";
         }
         textSecondPart = textSecondPart.substr(0, textSecondPart.length - 2);
         var textFirstPart = playerCount + " Player" + (playerCount != 1 ? 's' : '') + " - ";

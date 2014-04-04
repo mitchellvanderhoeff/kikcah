@@ -16,12 +16,12 @@ class Main {
     private gameList: GameList;
 
     private gamesRef: Firebase;
-    private userGamesRef: Firebase;
+    public userGamesRef: Firebase;
 
     private stage: Kinetic.Stage;
     private backgroundLayer: Kinetic.Layer;
     private titleLayer: Kinetic.Layer;
-    private gameListLayer: Kinetic.Layer;
+    public gameListLayer: Kinetic.Layer;
 
     constructor(stage: Kinetic.Stage) {
         this.stage = stage;
@@ -41,7 +41,7 @@ class Main {
 
     private startNewGame() {
         var newGame = {
-            players: {},
+            players: [],
             dateStarted: new Date().getTime(),
             blackDeck: null,
             whiteDeck: null,
@@ -67,7 +67,7 @@ class Main {
 
     public openGame(gameRef: Firebase) {
         stage.destroyChildren();
-        new GameManager(stage, gameRef, this.kikUser).start();
+        new GameManager(stage, gameRef, this.kikUser);
     }
 
     private setupGameList() {
@@ -82,7 +82,7 @@ class Main {
             width: this.gameListLayer.width(),
             height: this.gameListLayer.height()
         }));
-        this.gameList = new GameList(this.userGamesRef, this.gameListLayer, this.openGame);
+        this.gameList = new GameList(this);
 
         this.stage.add(this.gameListLayer);
         console.log("Game list setup finished");
@@ -160,7 +160,7 @@ class Main {
 
         Util.addDownstate(newGameButton);
 
-        newGameButton.on('click tap', (event: Event) => {
+        newGameButton.on('click tap', () => {
             this.startNewGame();
         });
 
@@ -206,19 +206,19 @@ class GameList {
     private userGamesRef: Firebase;
     private numGames: number = 0;
 
-    constructor(userGamesRef: Firebase, layer: Kinetic.Layer, openGame: (gameRef: Firebase) => void) {
-        this.userGamesRef = userGamesRef;
-        this.layer = layer;
+    constructor(private main: Main) {
+        this.userGamesRef = this.main.userGamesRef;
+        this.layer = this.main.gameListLayer;
 
-        userGamesRef.on('child_added', gameIDSnapshot => {
+        this.userGamesRef.on('child_added', gameIDSnapshot => {
             var gameID = gameIDSnapshot.val();
             console.log("Adding game with ID " + gameID);
             var gameRef = firebase.ref("/games/" + gameID);
             gameRef
                 .once('value', gameSnapshot => {
                     var game: Game = gameSnapshot.val();
-                    game.onSelected = function () {
-                        openGame(gameRef);
+                    game.onSelected = () => {
+                        this.main.openGame(gameRef);
                     };
                     this.addCellForGame(game);
                 });
@@ -269,7 +269,7 @@ class GameList {
         var playerCount = 0;
         for (var index in game.players) {
             playerCount += 1;
-            textSecondPart += game.players[index] + ", ";
+            textSecondPart += game.players[index].username + ", ";
         }
         textSecondPart = textSecondPart.substr(0, textSecondPart.length - 2);
         var textFirstPart = playerCount + " Player" + (playerCount != 1 ? 's' : '') + " - ";
