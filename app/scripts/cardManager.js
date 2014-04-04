@@ -42,10 +42,10 @@ var CardManager;
 
     var Card = (function () {
         function Card(text, type) {
+           this.view = null;
            this.selected = false;
             this.text = decodeURIComponent(text.replace("%", "%25"));
             this.type = type;
-            this.generateView();
         }
         Card.prototype.generateView = function (width, height) {
            if (typeof width === "undefined") {
@@ -101,11 +101,8 @@ var CardManager;
             });
 
             this.view = view;
+           return view;
         };
-
-       Card.prototype.isAddedToLayer = function () {
-          return !!(this.view.getLayer());
-       };
 
         Card.prototype.setSelected = function (selected) {
            this.selected = selected;

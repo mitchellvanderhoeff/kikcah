@@ -177,11 +177,17 @@ var GameManager = (function () {
           });
        });
 
+       var renderTimeout;
        this.whiteCardsRef.on('child_added', function (snapshot) {
           var cardText = snapshot.val();
           var card = new Card(cardText, 'white');
           _this.whiteCardsMap[snapshot.name()] = card;
-          _this.renderWhiteCards();
+          if (renderTimeout) {
+             clearTimeout(renderTimeout);
+          }
+          renderTimeout = setTimeout(function () {
+             _this.renderWhiteCards();
+          }, 200);
        });
 
        this.whiteCardsRef.on('child_removed', function (snapshot) {
@@ -244,22 +250,26 @@ var GameManager = (function () {
     };
 
    GameManager.prototype.renderWhiteCards = function () {
-      var numCards = _.size(this.whiteCardsMap);
       this.selectedCard = null;
-      this.cardsGroup = new Kinetic.Group();
+      var cardIndex = 0;
       for (var whiteCardID in this.whiteCardsMap) {
          var card = this.whiteCardsMap[whiteCardID];
-         var coefficient = ((numCards - 0.5) / GameManager.requiredNumWhiteCards);
+         if (card.view) {
+            card.view.destroy();
+         }
+         var cardView = card.generateView();
+         var coefficient = ((cardIndex + 0.5) / GameManager.requiredNumWhiteCards);
+         cardIndex += 1;
          var fanPosition = this.calculateFanPosition(coefficient);
-            card.view.setX(fanPosition.x);
-            card.view.setY(fanPosition.y);
-            card.view.rotate(fanPosition.rotation);
+         cardView.setX(fanPosition.x);
+         cardView.setY(fanPosition.y);
+         cardView.rotate(fanPosition.rotation);
 
-         card.view['model'] = card;
+         cardView['model'] = card;
          card['gameManager'] = this;
          card['cardID'] = whiteCardID;
 
-         card.view.on('click tap', function () {
+         cardView.on('click tap', function () {
             var card = this['model'];
             var gameManager = card['gameManager'];
             if (card.selected) {
@@ -275,13 +285,14 @@ var GameManager = (function () {
                gameManager.selectedCard = card;
             }
          });
-         this.cardsGroup.add(card.view);
-         card.view.moveToTop();
+         this.gameLayer.add(card.view);
+         cardView.moveToTop();
+         this.gameLayer.draw();
 
             var magnificationFactor = 1.3;
 
          var magnifyTween = new Kinetic.Tween({
-                node: card.view,
+            node: cardView,
                 scaleX: magnificationFactor,
                 scaleY: magnificationFactor,
             y: card.view.getY() - 100,
@@ -291,18 +302,17 @@ var GameManager = (function () {
 
          card.selectionTween = magnifyTween;
       }
-      this.gameLayer.add(this.cardsGroup);
-      this.gameLayer.draw();
    };
 
    GameManager.prototype.renderBlackCard = function () {
       var blackCard = new Card(this.blackCard, 'black');
+      blackCard.generateView();
       this.gameLayer.add(blackCard.view);
       blackCard.view.position({
          x: 70,
          y: 130
       });
-      var submittedCardView = new Card("", 'white').view;
+      var submittedCardView = new Card("", 'white').generateView();
       this.submittedCardText = Util.makeText({
          fill: 'black',
          fontSize: 16,

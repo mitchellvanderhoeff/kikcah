@@ -42,7 +42,7 @@ module CardManager {
     export class Card {
         public text: string;
         public type: string;
-        public view: Kinetic.Group;
+        public view: Kinetic.Group = null;
         public selectionTween: Kinetic.Tween;
 
         public selected: boolean = false;
@@ -50,10 +50,9 @@ module CardManager {
         constructor(text: string, type: string) {
             this.text = decodeURIComponent(text.replace("%", "%25"));
             this.type = type;
-            this.generateView();
         }
 
-        private generateView(width: number = 110, height: number = 120) {
+        public generateView(width: number = 110, height: number = 120): Kinetic.Group {
             var typeData = cardTypeInfo[this.type];
             var view = new Kinetic.Group({
                 offset: {
@@ -103,10 +102,7 @@ module CardManager {
             });
 
             this.view = view;
-        }
-
-        public isAddedToLayer(): boolean {
-            return !!(this.view.getLayer());
+            return view;
         }
 
         public setSelected(selected: boolean) {
