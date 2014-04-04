@@ -7,36 +7,28 @@
 /// <reference path="util.ts" />
 /// <reference path="game.ts" />
 /// <reference path="gameManager.ts" />
-var Main;
-(function (Main) {
-   var kikUser = null;
-   var gameList;
+var Main = (function () {
+   function Main(stage) {
+      this.kikUser = null;
+      this.stage = stage;
+   }
 
-   var gamesRef;
-   var userGamesRef;
-
-   var stage;
-   var backgroundLayer;
-   var titleLayer;
-   var gameListLayer;
-
-   function main() {
-      console.log("Starting app..");
+   Main.prototype.main = function () {
+      var _this = this;
+      console.log("Starting main..");
       kik.getUser(function (user) {
          if (user) {
-            kikUser = user;
-            setup();
+            _this.kikUser = user;
+            _this.setup();
          } else {
             console.error("Could not get user info");
          }
       });
-   }
+   };
 
-   Main.main = main;
-
-   function startNewGame() {
+   Main.prototype.startNewGame = function () {
       var newGame = {
-         players: [kikUser.username],
+         players: [this.kikUser.username],
          scores: [0],
          dateStarted: new Date().getTime(),
          currentBlackCardID: -1,
@@ -44,67 +36,61 @@ var Main;
          winningScore: 8,
          onSelected: null
       };
-      var newGameRef = gamesRef.push({});
+      var newGameRef = this.gamesRef.push({});
       newGameRef.set(newGame);
-      userGamesRef.push(newGameRef.name());
+      var gameID = newGameRef.name();
+      this.userGamesRef.push(gameID);
 
-      openGame(newGame);
-   }
+      this.openGame(newGameRef);
+   };
 
-   function openGame(game) {
+   Main.prototype.openGame = function (gameRef) {
       stage.destroyChildren();
-      new GameManager(stage, game).start();
-   }
+      new GameManager(stage, gameRef).start();
+   };
 
-   Main.openGame = openGame;
-
-   function setupGameList() {
-      gameListLayer = new Kinetic.Layer({
+   Main.prototype.setupGameList = function () {
+      this.gameListLayer = new Kinetic.Layer({
          x: 0,
-         y: titleLayer.y() + titleLayer.height(),
-         width: stage.width(),
-         height: stage.height() - titleLayer.height()
+         y: this.titleLayer.y() + this.titleLayer.height(),
+         width: this.stage.width(),
+         height: this.stage.height() - this.titleLayer.height()
       });
-      gameListLayer.add(new Kinetic.Rect({
+      this.gameListLayer.add(new Kinetic.Rect({
          fill: '#222',
-         width: gameListLayer.width(),
-         height: gameListLayer.height()
+         width: this.gameListLayer.width(),
+         height: this.gameListLayer.height()
       }));
-      gameList = new GameList(userGamesRef, gameListLayer);
+      this.gameList = new GameList(this.userGamesRef, this.gameListLayer, this.openGame);
 
-      stage.add(gameListLayer);
+      this.stage.add(this.gameListLayer);
       console.log("Game list setup finished");
-   }
+   };
 
-   function setupTitleLayer() {
-      stage = new Kinetic.Stage({
-         container: 'container',
-         width: window.innerWidth,
-         height: window.innerHeight
+   Main.prototype.setupTitleLayer = function () {
+      var _this = this;
+      this.backgroundLayer = new Kinetic.Layer({
+         width: this.stage.width(),
+         height: this.stage.height()
       });
 
-      backgroundLayer = new Kinetic.Layer({
-         width: stage.width(),
-         height: stage.height()
-      });
-
-      backgroundLayer.add(new Kinetic.Rect({
+      this.backgroundLayer.add(new Kinetic.Rect({
          fill: 'black',
-         width: backgroundLayer.width(),
-         height: backgroundLayer.height()
+         width: this.backgroundLayer.width(),
+         height: this.backgroundLayer.height()
       }));
 
-      titleLayer = new Kinetic.Layer({
+      this.titleLayer = new Kinetic.Layer({
          x: 0,
          y: 0,
-         width: stage.width(),
+         width: this.stage.width(),
          height: 130
       });
 
       var titleText = new Kinetic.Text({
          x: 0,
          y: 5,
-         width: titleLayer.width(),
+         width: this.titleLayer.width(),
          height: 40,
          fontSize: 30,
          fontFamily: 'Helvetica',
@@ -118,7 +104,7 @@ var Main;
       var buttonRect = Util.rectInset({
          x: 0,
          y: titleText.getY() + titleText.getHeight() + 10,
-         width: titleLayer.width(),
+         width: this.titleLayer.width(),
          height: 50
       }, {
          x: 30,
@@ -152,92 +138,80 @@ var Main;
          text: "New Game"
       }));
 
-      newGameButton.on('touchstart mousedown', function (event) {
-         this.getChildren().each(function (child) {
-            return child.opacity(0.8);
-         });
-         titleLayer.draw();
-      });
-
-      newGameButton.on('touchend mouseup mouseout', function (event) {
-         this.getChildren().each(function (child) {
-            return child.opacity(1.0);
-         });
-         titleLayer.draw();
-      });
+      Util.addDownstate(newGameButton);
 
       newGameButton.on('click tap', function (event) {
-         startNewGame();
+         _this.startNewGame();
       });
 
-      titleLayer.add(titleText);
-      titleLayer.add(newGameButton);
+      this.titleLayer.add(titleText);
+      this.titleLayer.add(newGameButton);
 
-      stage.add(backgroundLayer);
-      stage.add(titleLayer);
+      this.stage.add(this.backgroundLayer);
+      this.stage.add(this.titleLayer);
 
       console.log("Title setup finished");
-   }
+   };
 
-   function setupData() {
-      var userRef = firebase.ref("/users/" + kikUser.username);
+   Main.prototype.setupData = function () {
+      var _this = this;
+      var userRef = firebase.ref("/users/" + this.kikUser.username);
 
       // Lazy instantiate the user ref
       userRef.once('value', function (snapshot) {
          if (snapshot.val() == null) {
             userRef.set({
-               "username": kikUser.username,
+               "username": _this.kikUser.username,
                "games": []
             });
          }
       });
-      userGamesRef = userRef.child('participatingGames');
+      this.userGamesRef = userRef.child('participatingGames');
 
-      gamesRef = firebase.ref("/games/");
+      this.gamesRef = firebase.ref("/games/");
       console.log("Data setup finished");
-   }
+   };
 
-   function setup() {
-      setupData();
-      setupTitleLayer();
-      setupGameList();
+   Main.prototype.setup = function () {
+      this.setupData();
+      this.setupTitleLayer();
+      this.setupGameList();
       console.log("App started");
-   }
-})(Main || (Main = {}));
+   };
+   return Main;
+})();
 
 var GameList = (function () {
-   function GameList(userGamesRef, layer) {
+   function GameList(userGamesRef, layer, openGame) {
       var _this = this;
-      this.cellHeight = 60;
-      this.cellPadding = 10;
       this.numGames = 0;
       this.userGamesRef = userGamesRef;
       this.layer = layer;
-      this.games = [];
 
       userGamesRef.on('child_added', function (gameIDSnapshot) {
          var gameID = gameIDSnapshot.val();
          console.log("Adding game with ID " + gameID);
-         firebase.ref("/games/" + gameID).once('value', function (gameSnapshot) {
+         var gameRef = firebase.ref("/games/" + gameID);
+         gameRef.once('value', function (gameSnapshot) {
             var game = gameSnapshot.val();
             game.onSelected = function () {
-               Main.openGame(this);
+               openGame(gameRef);
             };
-            _this.games.push(game);
             _this.addCellForGame(game);
          });
       });
    }
 
    GameList.prototype.addCellForGame = function (game) {
-      var buttonRect = {
+      var buttonRect = Util.rectInset({
          x: 0,
-         y: this.numGames * (this.cellHeight + this.cellPadding),
+         y: this.numGames * (GameList.cellHeight + GameList.cellPadding),
          width: this.layer.width(),
-         height: this.cellHeight
-      };
-
-      console.log("Adding game cell with rect " + JSON.stringify(buttonRect));
+         height: GameList.cellHeight
+      }, {
+         x: 4,
+         y: 0
+      });
 
       this.numGames += 1;
 
@@ -249,8 +223,8 @@ var GameList = (function () {
       });
 
       gameItem.add(new Kinetic.Rect({
-         x: buttonRect.x,
-         y: buttonRect.y,
+         x: 0,
+         y: 0,
          width: buttonRect.width,
          height: buttonRect.height,
          stroke: 'white',
@@ -291,11 +265,20 @@ var GameList = (function () {
          game.onSelected(event);
       });
 
+      Util.addDownstate(gameItem);
+
       this.layer.add(gameItem);
       this.layer.draw();
    };
+   GameList.cellHeight = 60;
+   GameList.cellPadding = 5;
    return GameList;
 })();
 
-Main.main();
+var stage = new Kinetic.Stage({
+   container: 'container',
+   width: window.innerWidth,
+   height: window.innerHeight
+});
+new Main(stage).main();
 //# sourceMappingURL=main.js.map

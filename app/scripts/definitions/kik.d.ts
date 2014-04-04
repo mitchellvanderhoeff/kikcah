@@ -11,4 +11,6 @@ declare module kik {
         thumbnail: string;
     }
     export function getUser(callback: (user: KikUser) => void): void;
+
+    export function pickUsers(options: Object, callback: (users: Array<KikUser>) => void);
 }

@@ -2,7 +2,7 @@
  * Created by mitch on 2014-04-01.
  */
 /// <reference path="definitions/kinetic.d.ts" />
-
+/// <reference path="definitions/underscore.d.ts" />
 module Util {
     export function getJSON(url: string, callback: Function) {
         var request = new XMLHttpRequest();
@@ -54,5 +54,40 @@ module Util {
             callback(imageData);
         };
         imageData.src = url;
+    }
+
+    export function loadSVG(url: string, callback: (path: Kinetic.Path) => void) {
+        var request = new XMLHttpRequest();
+        request.overrideMimeType("image/svg+xml");
+        request.open('GET', url, true);
+        request.onreadystatechange = function () {
+            if (request.readyState == 4 && request.status == 200) {
+                var path = new Kinetic.Path({
+                    data: request.responseText
+                });
+                callback(path);
+            }
+        };
+        request.send(null);
+    }
+
+    export function makeText(options: Object): Kinetic.Text {
+        var text = new Kinetic.Text(_.extend(options, {
+            fontFamily: 'Helvetica',
+            fontStyle: 'bold'
+        }));
+        return text;
+    }
+
+    export function addDownstate(node: Kinetic.Group) {
+        var originalOpacity = node.opacity();
+        node.on('touchstart mousedown', function () {
+            node.opacity(0.75);
+            node.getLayer().draw();
+        });
+        node.on('touchend mouseup mouseout', function () {
+            node.opacity(originalOpacity);
+            node.getLayer().draw();
+        })
     }
 }

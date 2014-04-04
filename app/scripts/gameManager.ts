@@ -5,16 +5,112 @@
 /// <reference path="util.ts" />
 /// <reference path="cardManager.ts" />
 /// <reference path="game.ts" />
+/// <reference path="definitions/firebase.d.ts" />
+/// <reference path="main.ts" />
 
 import Card = CardManager.Card;
+import KikUser = kik.KikUser;
 
 class GameManager {
-    private stage: Kinetic.Stage;
-    private game: Game;
+    private bgLayer: Kinetic.Layer;
+    private topBarLayer: Kinetic.Layer;
+    private gameLayer: Kinetic.Layer;
+    private static topBarHeight: number = 40;
 
-    constructor(stage: Kinetic.Stage, game: Game) {
-        this.stage = stage;
-        this.game = game;
+    private playersRef: Firebase;
+    private scoresRef: Firebase;
+
+    constructor(private stage: Kinetic.Stage, private gameRef: Firebase) {
+        this.playersRef = gameRef.child('players');
+        this.scoresRef = gameRef.child('scores');
+        this.setupGraphics();
+    }
+
+    private static makeBack(): Kinetic.Group {
+        var view = new Kinetic.Group();
+        view.add(Util.makeText({
+            fill: 'white',
+            fontSize: 20,
+            text: "Back"
+        }));
+        return view;
+    }
+
+    private static makeInvite(): Kinetic.Group {
+        var view = new Kinetic.Group();
+        view.add(Util.makeText({
+            fill: 'white',
+            fontSize: 20,
+            text: "Invite"
+        }));
+        return view;
+    }
+
+    private inviteButtonClicked(event: Event) {
+        kik.pickUsers({
+            minResults: 1,
+            maxResults: 1
+        }, users => {
+            if (users && users[0]) {
+                var user: KikUser = users[0];
+                this.playersRef.push(user.username);
+                this.scoresRef.push(0);
+                var userRef = firebase.ref("/users/" + user.username);
+                userRef
+                    .once(snapshot => {
+                        if (snapshot.val() == null) {
+                            userRef.set({
+                                "username": user.username,
+                                "games": [this.gameRef.name()]
+                            })
+                        }
+                    })
+            }
+        })
+    }
+
+    private setupGraphics() {
+        this.bgLayer = new Kinetic.Layer({
+            width: this.stage.width(),
+            height: this.stage.height()
+        });
+
+        this.bgLayer.add(new Kinetic.Rect({
+            width: this.bgLayer.width(),
+            height: this.bgLayer.height(),
+            fill: 'white'
+        }));
+
+        this.topBarLayer = new Kinetic.Layer({
+            width: this.stage.width(),
+            height: GameManager.topBarHeight
+        });
+
+        var back = GameManager.makeBack();
+        back.width(60);
+        back.position({x: 7, y: this.topBarLayer.height() / 3});
+        back.on('click tap', (event: Event) => {
+            this.stage.destroyChildren();
+            new Main(this.stage).main();
+        });
+        Util.addDownstate(back);
+
+        var invite = GameManager.makeInvite();
+        invite.width(55);
+        invite.position({x: this.topBarLayer.width() - invite.width() - 7, y: this.topBarLayer.height() / 3});
+        invite.on('click tap', this.inviteButtonClicked);
+        Util.addDownstate(invite);
+
+        this.topBarLayer.add(new Kinetic.Rect({
+            width: this.topBarLayer.width(),
+            height: this.topBarLayer.height(),
+            fill: 'black'
+        }));
+        this.topBarLayer.add(back);
+        this.topBarLayer.add(invite);
+
+        this.stage.add(this.bgLayer);
+        this.stage.add(this.topBarLayer)
     }
 
     public start() {
