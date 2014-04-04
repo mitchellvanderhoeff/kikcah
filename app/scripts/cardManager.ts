@@ -45,12 +45,6 @@ module CardManager {
         public view: Kinetic.Group;
         public selectionTween: Kinetic.Tween;
 
-        public onSelect: () => void = () => {
-        };
-        public onDeselect: () => void = () => {
-        };
-
-        private border: Kinetic.Rect;
         public selected: boolean = false;
 
         constructor(text: string, type: string) {
@@ -65,7 +59,9 @@ module CardManager {
                 offset: {
                     x: (width / 2),
                     y: height
-                }
+                },
+                width: width,
+                height: height
             });
 
             var text = new Kinetic.Text({
@@ -99,12 +95,18 @@ module CardManager {
             });
             Util.loadKineticImage(image, typeData['imageURL'], function () {
                 view.add(image);
-                text.moveToTop();
-                view.getLayer().draw();
+                image.moveToBottom();
+                var layer = view.getLayer();
+                if (layer) {
+                    layer.draw();
+                }
             });
 
-            this.border = border;
             this.view = view;
+        }
+
+        public isAddedToLayer(): boolean {
+            return !!(this.view.getLayer());
         }
 
         public setSelected(selected: boolean) {

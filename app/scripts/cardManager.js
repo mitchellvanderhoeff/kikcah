@@ -42,10 +42,6 @@ var CardManager;
 
     var Card = (function () {
         function Card(text, type) {
-           this.onSelect = function () {
-           };
-           this.onDeselect = function () {
-           };
            this.selected = false;
             this.text = decodeURIComponent(text.replace("%", "%25"));
             this.type = type;
@@ -61,7 +57,9 @@ var CardManager;
                 offset: {
                     x: (width / 2),
                     y: height
-                }
+                },
+               width: width,
+               height: height
             });
 
             var text = new Kinetic.Text({
@@ -95,13 +93,19 @@ var CardManager;
             });
             Util.loadKineticImage(image, typeData['imageURL'], function () {
                 view.add(image);
-               text.moveToTop();
-               view.getLayer().draw();
+               image.moveToBottom();
+               var layer = view.getLayer();
+               if (layer) {
+                  layer.draw();
+               }
             });
 
-            this.border = border;
             this.view = view;
         };
+
+       Card.prototype.isAddedToLayer = function () {
+          return !!(this.view.getLayer());
+       };
 
         Card.prototype.setSelected = function (selected) {
            this.selected = selected;
