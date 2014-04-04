@@ -40,12 +40,14 @@ class Main {
     }
 
     private startNewGame() {
-        var newGame: Game = {
-            players: [],
-            scores: [],
+        var newGame = {
+            players: {},
             dateStarted: new Date().getTime(),
-            currentBlackCardID: -1,
-            currentGameMasterIndex: -1,
+            blackDeck: null,
+            whiteDeck: null,
+            currentBlackCard: null,
+            submittedWhiteCards: null,
+            gameMasterIndex: 0,
             winningScore: 8,
             onSelected: null
         };
@@ -53,8 +55,12 @@ class Main {
         newGameRef.set(newGame);
         var gameID = newGameRef.name();
         this.userGamesRef.push(gameID);
-        newGameRef.child('players').push(this.kikUser.username);
-        newGameRef.child('scores').push(0);
+        newGameRef.child('players').push({
+            username: this.kikUser.username,
+            score: 0
+        });
+
+        CardManager.loadDecksIntoDeckRefs(newGameRef.child('whiteDeck'), newGameRef.child('blackDeck'));
 
         this.openGame(newGameRef);
     }

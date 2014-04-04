@@ -3,13 +3,9 @@
  */
 /// <reference path="definitions/kinetic.d.ts" />
 /// <reference path="util.ts" />
+/// <reference path="definitions/firebase.d.ts" />
 
 module CardManager {
-    var allWhiteCards: Array<Card> = [];
-    var allBlackCards: Array<Card> = [];
-    var whiteCards: Array<Card> = [];
-    var blackCards: Array<Card> = [];
-
     var cardTypeInfo = {
         white: {
             textColor: 'black',
@@ -21,41 +17,28 @@ module CardManager {
         }
     };
 
-    export function populateCardData(callback: Function = (function () {
-    })) {
+    export function loadDecksIntoDeckRefs(whiteDeckRef: Firebase, blackDeckRef: Firebase) {
         Util.getJSON("/resources/cards.json", (cardDataArray: Array<Object>) => {
+            var whiteDeck: Array<string> = [];
+            var blackDeck: Array<string> = [];
             cardDataArray.forEach(cardData => {
                 if (cardData['expansion'] == "Base") {
                     var cardText = cardData['text'];
                     if (cardData['cardType'] == "A") {
-                        var card = new Card(cardText, 'white');
-                        allWhiteCards.push(card);
+                        whiteDeck.push(cardText);
                     } else if (cardData["cardType"] == "Q") {
-                        var card = new Card(cardText, 'black');
-                        allBlackCards.push(card);
+                        blackDeck.push(cardText);
                     }
                 }
             });
-            console.log("Parsed " + allWhiteCards.length + " white cards and " + allBlackCards.length + " black cards");
-            callback();
+            Util.shuffle(whiteDeck).forEach(cardText => {
+                whiteDeckRef.push(cardText);
+            });
+            Util.shuffle(blackDeck).forEach(cardText => {
+                blackDeckRef.push(cardText);
+            });
+            console.log("Parsed " + whiteDeck.length + " white cards and " + blackDeck.length + " black cards");
         });
-    }
-
-    export function shuffleCards() {
-        whiteCards = Util.shuffle(allWhiteCards);
-        blackCards = Util.shuffle(allBlackCards);
-    }
-
-    export function dealWhiteCard(): Card {
-        var card = whiteCards[0];
-        whiteCards.splice(0, 1);
-        return card;
-    }
-
-    export function dealBlackCard(): Card {
-        var card = blackCards[0];
-        blackCards.splice(0, 1);
-        return card;
     }
 
     export class Card {

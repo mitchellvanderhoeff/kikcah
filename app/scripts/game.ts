@@ -3,12 +3,16 @@
  */
 
 interface Game {
-    players:                Array<string>;
-    scores:                 Array<number>;
+    players:                Object;
 
     dateStarted:            number;
-    currentBlackCardID:     number;
-    currentGameMasterIndex: number;
+
+    whiteDeck:              Array<string>;
+    blackDeck:              Array<string>;
+    currentBlackCard:       number;
+    submittedWhiteCards:    number;
+
+    gameMasterIndex:        number;
     winningScore:           number;
 
     onSelected:             (event: Event) => void;
