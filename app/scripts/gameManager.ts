@@ -9,18 +9,17 @@
 /// <reference path="main.ts" />
 
 import Card = CardManager.Card;
-import KikUser = kik.KikUser;
 
 class GameManager {
     private bgLayer: Kinetic.Layer;
     private topBarLayer: Kinetic.Layer;
     private gameLayer: Kinetic.Layer;
-    private static topBarHeight: number = 40;
+    private static topBarHeight: number = 55;
 
     private playersRef: Firebase;
     private scoresRef: Firebase;
 
-    constructor(private stage: Kinetic.Stage, private gameRef: Firebase) {
+    constructor(private stage: Kinetic.Stage, private gameRef: Firebase, private kikUser: KikUser) {
         this.playersRef = gameRef.child('players');
         this.scoresRef = gameRef.child('scores');
         this.setupGraphics();
@@ -50,21 +49,26 @@ class GameManager {
         kik.pickUsers({
             minResults: 1,
             maxResults: 1
-        }, users => {
+        }, (users: Array<any>) => {
             if (users && users[0]) {
                 var user: KikUser = users[0];
                 this.playersRef.push(user.username);
                 this.scoresRef.push(0);
                 var userRef = firebase.ref("/users/" + user.username);
                 userRef
-                    .once(snapshot => {
+                    .once('value', snapshot => {
                         if (snapshot.val() == null) {
                             userRef.set({
                                 "username": user.username,
-                                "games": [this.gameRef.name()]
+                                "participatingGames": []
                             })
                         }
-                    })
+                        userRef.child('participatingGames').push(this.gameRef.name())
+                    });
+                kik.send(user.username, {
+                    title: "Cards Against Humanity",
+                    text: this.kikUser.username + " has invited you to play Cards Against Humanity!"
+                })
             }
         })
     }
@@ -98,7 +102,9 @@ class GameManager {
         var invite = GameManager.makeInvite();
         invite.width(55);
         invite.position({x: this.topBarLayer.width() - invite.width() - 7, y: this.topBarLayer.height() / 3});
-        invite.on('click tap', this.inviteButtonClicked);
+        invite.on('click tap', (event: Event) => {
+            this.inviteButtonClicked(event);
+        });
         Util.addDownstate(invite);
 
         this.topBarLayer.add(new Kinetic.Rect({
@@ -109,8 +115,15 @@ class GameManager {
         this.topBarLayer.add(back);
         this.topBarLayer.add(invite);
 
+        this.gameLayer = new Kinetic.Layer({
+            width: this.stage.width(),
+            height: this.stage.height() - this.topBarLayer.height(),
+            y: this.topBarLayer.height()
+        });
+
         this.stage.add(this.bgLayer);
-        this.stage.add(this.topBarLayer)
+        this.stage.add(this.topBarLayer);
+        this.stage.add(this.gameLayer);
     }
 
     public start() {

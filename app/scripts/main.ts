@@ -41,8 +41,8 @@ class Main {
 
     private startNewGame() {
         var newGame: Game = {
-            players: [this.kikUser.username],
-            scores: [0],
+            players: [],
+            scores: [],
             dateStarted: new Date().getTime(),
             currentBlackCardID: -1,
             currentGameMasterIndex: -1,
@@ -53,13 +53,15 @@ class Main {
         newGameRef.set(newGame);
         var gameID = newGameRef.name();
         this.userGamesRef.push(gameID);
+        newGameRef.child('players').push(this.kikUser.username);
+        newGameRef.child('scores').push(0);
 
         this.openGame(newGameRef);
     }
 
     public openGame(gameRef: Firebase) {
         stage.destroyChildren();
-        new GameManager(stage, gameRef).start();
+        new GameManager(stage, gameRef, this.kikUser).start();
     }
 
     private setupGameList() {
@@ -70,7 +72,7 @@ class Main {
             height: this.stage.height() - this.titleLayer.height()
         });
         this.gameListLayer.add(new Kinetic.Rect({
-            fill: '#222',
+            fill: 'black',
             width: this.gameListLayer.width(),
             height: this.gameListLayer.height()
         }));
@@ -104,7 +106,7 @@ class Main {
             y: 5,
             width: this.titleLayer.width(),
             height: 40,
-            fontSize: 30,
+            fontSize: 24,
             fontFamily: 'Helvetica',
             fontStyle: 'bold',
             align: 'center',
@@ -257,13 +259,15 @@ class GameList {
             y: 10
         });
 
-        var text = game.players.length + " Player" + (game.players.length != 1 ? 's' : '') + " - ";
+        var textSecondPart = "";
+        var playerCount = 0;
         for (var index in game.players) {
-            text += game.players[index];
-            if (index < game.players.length - 1) {
-                text += ", "
-            }
+            playerCount += 1;
+            textSecondPart += game.players[index] + ", ";
         }
+        textSecondPart = textSecondPart.substr(0, textSecondPart.length - 2);
+        var textFirstPart = playerCount + " Player" + (playerCount != 1 ? 's' : '') + " - ";
+        var text = textFirstPart + textSecondPart;
         gameItem.add(new Kinetic.Text({
             x: textRect.x,
             y: textRect.y,

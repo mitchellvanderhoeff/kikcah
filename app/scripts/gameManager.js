@@ -10,9 +10,10 @@
 var Card = CardManager.Card;
 
 var GameManager = (function () {
-   function GameManager(stage, gameRef) {
+   function GameManager(stage, gameRef, kikUser) {
       this.stage = stage;
       this.gameRef = gameRef;
+      this.kikUser = kikUser;
       this.playersRef = gameRef.child('players');
       this.scoresRef = gameRef.child('scores');
       this.setupGraphics();
@@ -48,6 +49,20 @@ var GameManager = (function () {
             var user = users[0];
             _this.playersRef.push(user.username);
             _this.scoresRef.push(0);
+            var userRef = firebase.ref("/users/" + user.username);
+            userRef.once('value', function (snapshot) {
+               if (snapshot.val() == null) {
+                  userRef.set({
+                     "username": user.username,
+                     "participatingGames": []
+                  });
+               }
+               userRef.child('participatingGames').push(_this.gameRef.name());
+            });
+            kik.send(user.username, {
+               title: "Cards Against Humanity",
+               text: _this.kikUser.username + " has invited you to play Cards Against Humanity!"
+            });
          }
       });
    };
@@ -82,7 +97,9 @@ var GameManager = (function () {
       var invite = GameManager.makeInvite();
       invite.width(55);
       invite.position({ x: this.topBarLayer.width() - invite.width() - 7, y: this.topBarLayer.height() / 3 });
-      invite.on('click tap', this.inviteButtonClicked);
+      invite.on('click tap', function (event) {
+         _this.inviteButtonClicked(event);
+      });
       Util.addDownstate(invite);
 
       this.topBarLayer.add(new Kinetic.Rect({
@@ -93,8 +110,15 @@ var GameManager = (function () {
       this.topBarLayer.add(back);
       this.topBarLayer.add(invite);
 
+      this.gameLayer = new Kinetic.Layer({
+         width: this.stage.width(),
+         height: this.stage.height() - this.topBarLayer.height(),
+         y: this.topBarLayer.height()
+      });
+
       this.stage.add(this.bgLayer);
       this.stage.add(this.topBarLayer);
+      this.stage.add(this.gameLayer);
    };
 
    GameManager.prototype.start = function () {
@@ -148,7 +172,7 @@ var GameManager = (function () {
       }
       return cards;
    };
-   GameManager.topBarHeight = 40;
+   GameManager.topBarHeight = 55;
    return GameManager;
 })();
 //# sourceMappingURL=gameManager.js.map

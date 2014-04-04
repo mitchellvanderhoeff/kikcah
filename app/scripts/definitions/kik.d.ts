@@ -12,5 +12,7 @@ declare module kik {
     }
     export function getUser(callback: (user: KikUser) => void): void;
 
-    export function pickUsers(options: Object, callback: (users: Array<KikUser>) => void);
+    export function pickUsers(options: Object, callback: (users: Array<any>) => void);
+
+    export function send(username: string, data: Object);
 }
